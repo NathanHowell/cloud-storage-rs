@@ -120,19 +120,6 @@ impl DefaultObjectAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `DefautObjectAccessControl::create`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn create_sync(
-        bucket: &str,
-        new_acl: &NewDefaultObjectAccessControl,
-    ) -> crate::Result<Self> {
-        Self::create(bucket, new_acl).await
-    }
-
     /// Retrieves default object ACL entries on the specified bucket.
     /// ### Important
     /// Important: This method fails with a `400 Bad Request` response for buckets with uniform
@@ -168,16 +155,6 @@ impl DefaultObjectAccessControl {
                 .collect()),
             GoogleResponse::Error(e) => Err(e.into()),
         }
-    }
-
-    /// The synchronous equivalent of `DefautObjectAccessControl::list`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn list_sync(bucket: &str) -> crate::Result<Vec<Self>> {
-        Self::list(bucket).await
     }
 
     /// Read a single `DefaultObjectAccessControl`.
@@ -222,16 +199,6 @@ impl DefaultObjectAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `DefautObjectAccessControl::read`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn read_sync(bucket: &str, entity: &Entity) -> crate::Result<Self> {
-        Self::read(bucket, entity).await
-    }
-
     /// Update the current `DefaultObjectAccessControl`.
     /// ### Important
     /// Important: This method fails with a `400 Bad Request` response for buckets with uniform
@@ -273,16 +240,6 @@ impl DefaultObjectAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `DefautObjectAccessControl::update`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn update_sync(&self) -> crate::Result<Self> {
-        self.update().await
-    }
-
     /// Delete this 'DefaultObjectAccessControl`.
     /// ### Important
     /// Important: This method fails with a `400 Bad Request` response for buckets with uniform
@@ -316,16 +273,6 @@ impl DefaultObjectAccessControl {
         } else {
             Err(crate::Error::Google(response.json().await?))
         }
-    }
-
-    /// The async equivalent of `DefautObjectAccessControl::delete`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn delete_sync(self) -> Result<(), crate::Error> {
-        self.delete().await
     }
 }
 
@@ -382,65 +329,5 @@ mod tests {
             DefaultObjectAccessControl::read(&bucket.name, &Entity::AllAuthenticatedUsers).await?;
         default_acl.delete().await?;
         Ok(())
-    }
-
-    #[cfg(feature = "sync")]
-    mod sync {
-        use super::*;
-
-        #[test]
-        fn create() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let new_acl = NewDefaultObjectAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            DefaultObjectAccessControl::create_sync(&bucket.name, &new_acl)?;
-            Ok(())
-        }
-
-        #[test]
-        fn read() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let new_acl = NewDefaultObjectAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            DefaultObjectAccessControl::create_sync(&bucket.name, &new_acl)?;
-            DefaultObjectAccessControl::read_sync(&bucket.name, &Entity::AllUsers)?;
-            Ok(())
-        }
-
-        #[test]
-        fn list() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            DefaultObjectAccessControl::list_sync(&bucket.name)?;
-            Ok(())
-        }
-
-        #[test]
-        fn update() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let new_acl = NewDefaultObjectAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            let mut default_acl = DefaultObjectAccessControl::create_sync(&bucket.name, &new_acl)?;
-            default_acl.entity = Entity::AllAuthenticatedUsers;
-            default_acl.update_sync()?;
-            Ok(())
-        }
-
-        #[test]
-        fn delete() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let new_acl = NewDefaultObjectAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            let acl = DefaultObjectAccessControl::create_sync(&bucket.name, &new_acl)?;
-            acl.delete_sync()?;
-            Ok(())
-        }
     }
 }

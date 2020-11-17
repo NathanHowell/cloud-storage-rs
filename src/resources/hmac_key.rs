@@ -120,16 +120,6 @@ impl HmacKey {
         }
     }
 
-    /// The synchronous equivalent of `HmacKey::create`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn create_sync() -> crate::Result<Self> {
-        Self::create().await
-    }
-
     /// Retrieves a list of HMAC keys matching the criteria. Since the HmacKey is secret, this does
     /// not return a `HmacKey`, but a `HmacMeta`. This is a redacted version of a `HmacKey`, but
     /// with the secret data omitted.
@@ -176,16 +166,6 @@ impl HmacKey {
         }
     }
 
-    /// The async equivalent of `HmacKey::list`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn list_sync() -> crate::Result<Vec<HmacMeta>> {
-        Self::list().await
-    }
-
     /// Retrieves an HMAC key's metadata. Since the HmacKey is secret, this does not return a
     /// `HmacKey`, but a `HmacMeta`. This is a redacted version of a `HmacKey`, but with the secret
     /// data omitted.
@@ -222,16 +202,6 @@ impl HmacKey {
             GoogleResponse::Success(s) => Ok(s),
             GoogleResponse::Error(e) => Err(e.into()),
         }
-    }
-
-    /// The synchronous equivalent of `HmacKey::read`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn read_sync(access_id: &str) -> crate::Result<HmacMeta> {
-        Self::read(access_id).await
     }
 
     /// Updates the state of an HMAC key. See the HMAC Key resource descriptor for valid states.
@@ -274,16 +244,6 @@ impl HmacKey {
         }
     }
 
-    /// The synchronous equivalent of `HmacKey::update`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn update_sync(access_id: &str, state: HmacState) -> crate::Result<HmacMeta> {
-        Self::update(access_id, state).await
-    }
-
     /// Deletes an HMAC key. Note that a key must be set to `Inactive` first.
     ///
     /// The authenticated user must have storage.hmacKeys.delete permission for the project in which
@@ -318,13 +278,6 @@ impl HmacKey {
         } else {
             Err(crate::Error::Google(response.json().await?))
         }
-    }
-
-    /// The synchronous equivalent of `HmacKey::delete`.
-    #[tokio::main]
-    #[cfg(feature = "sync")]
-    pub async fn delete_sync(access_id: &str) -> crate::Result<()> {
-        Self::delete(access_id).await
     }
 }
 
@@ -393,59 +346,5 @@ mod tests {
             HmacKey::delete(&key.access_id).await?;
         }
         Ok(())
-    }
-
-    #[cfg(feature = "sync")]
-    mod sync {
-        use super::*;
-
-        fn get_test_hmac() -> HmacMeta {
-            match HmacKey::create_sync() {
-                Ok(key) => key.metadata,
-                Err(_) => HmacKey::list_sync().unwrap().pop().unwrap(),
-            }
-        }
-
-        fn remove_test_hmac(access_id: &str) {
-            HmacKey::update_sync(access_id, HmacState::Inactive).unwrap();
-            HmacKey::delete_sync(access_id).unwrap();
-        }
-
-        #[test]
-        fn create() -> Result<(), Box<dyn std::error::Error>> {
-            let key = HmacKey::create_sync()?;
-            remove_test_hmac(&key.metadata.access_id);
-            Ok(())
-        }
-
-        #[test]
-        fn list() -> Result<(), Box<dyn std::error::Error>> {
-            HmacKey::list_sync()?;
-            Ok(())
-        }
-
-        #[test]
-        fn read() -> Result<(), Box<dyn std::error::Error>> {
-            let key = get_test_hmac();
-            HmacKey::read_sync(&key.access_id)?;
-            remove_test_hmac(&key.access_id);
-            Ok(())
-        }
-
-        #[test]
-        fn update() -> Result<(), Box<dyn std::error::Error>> {
-            let key = get_test_hmac();
-            HmacKey::update_sync(&key.access_id, HmacState::Inactive)?;
-            HmacKey::delete_sync(&key.access_id)?;
-            Ok(())
-        }
-
-        #[test]
-        fn delete() -> Result<(), Box<dyn std::error::Error>> {
-            let key = get_test_hmac();
-            HmacKey::update_sync(&key.access_id, HmacState::Inactive)?;
-            HmacKey::delete_sync(&key.access_id)?;
-            Ok(())
-        }
     }
 }

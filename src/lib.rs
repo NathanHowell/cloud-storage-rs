@@ -166,13 +166,6 @@ where
 }
 
 #[cfg(test)]
-#[cfg(feature = "sync")]
-#[tokio::main]
-async fn read_test_bucket_sync() -> Bucket {
-    read_test_bucket().await
-}
-
-#[cfg(test)]
 async fn read_test_bucket() -> Bucket {
     dotenv::dotenv().ok();
     let name = std::env::var("TEST_BUCKET").unwrap();
@@ -185,15 +178,6 @@ async fn read_test_bucket() -> Bucket {
         .await
         .unwrap(),
     }
-}
-
-// since all tests run in parallel, we need to make sure we do not create multiple buckets with
-// the same name in each test.
-#[cfg(test)]
-#[cfg(feature = "sync")]
-#[tokio::main]
-async fn create_test_bucket_sync(name: &str) -> Bucket {
-    create_test_bucket(name).await
 }
 
 // since all tests run in parallel, we need to make sure we do not create multiple buckets with

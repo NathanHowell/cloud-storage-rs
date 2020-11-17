@@ -204,21 +204,6 @@ impl Object {
         }
     }
 
-    /// The synchronous equivalent of `Object::create`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn create_sync(
-        bucket: &str,
-        file: Vec<u8>,
-        filename: &str,
-        mime_type: &str,
-    ) -> crate::Result<Self> {
-        Self::create(bucket, file, filename, mime_type).await
-    }
-
     /// Create a new object. This works in the same way as `Object::create`, except it does not need
     /// to load the entire file in ram.
     /// ## Example
@@ -278,28 +263,6 @@ impl Object {
         }
     }
 
-    /// The async equivalent of `Object::create_streamed`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn create_streamed_sync<R: std::io::Read + Send + 'static>(
-        bucket: &str,
-        mut file: R,
-        length: impl Into<Option<u64>>,
-        filename: &str,
-        mime_type: &str,
-    ) -> crate::Result<Self> {
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)
-            .map_err(|e| Error::Other(e.to_string()))?;
-
-        let stream = stream::once(async { Ok::<_, Error>(buffer) });
-
-        Self::create_streamed(bucket, stream, length, filename, mime_type).await
-    }
-
     /// Obtain a list of objects within this Bucket.
     /// ### Example
     /// ```no_run
@@ -315,18 +278,6 @@ impl Object {
         bucket: &str,
     ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + '_, Error> {
         Self::list_from(bucket, None).await
-    }
-
-    /// The async equivalent of `Object::list`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn list_sync(bucket: &str) -> Result<Vec<Self>, Error> {
-        use futures::TryStreamExt;
-
-        Self::list_from(bucket, None).await?.try_concat().await
     }
 
     /// Obtain a list of objects by prefix within this Bucket .
@@ -345,21 +296,6 @@ impl Object {
         prefix: &'a str,
     ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + 'a, Error> {
         Self::list_from(bucket, Some(prefix)).await
-    }
-
-    /// The async equivalent of `Object::list_prefix`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn list_prefix_sync(bucket: &str, prefix: &str) -> Result<Vec<Self>, Error> {
-        use futures::TryStreamExt;
-
-        Self::list_from(bucket, Some(prefix))
-            .await?
-            .try_concat()
-            .await
     }
 
     async fn list_from<'a>(
@@ -457,16 +393,6 @@ impl Object {
         }
     }
 
-    /// The synchronous equivalent of `Object::read`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn read_sync(bucket: &str, file_name: &str) -> crate::Result<Self> {
-        Self::read(bucket, file_name).await
-    }
-
     /// Download the content of the object with the specified name in the specified bucket.
     /// ### Example
     /// ```no_run
@@ -493,16 +419,6 @@ impl Object {
             .bytes()
             .await?
             .to_vec())
-    }
-
-    /// The synchronous equivalent of `Object::download`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn download_sync(bucket: &str, file_name: &str) -> crate::Result<Vec<u8>> {
-        Self::download(bucket, file_name).await
     }
 
     /// Download the content of the object with the specified name in the specified bucket, without
@@ -582,16 +498,6 @@ impl Object {
         }
     }
 
-    /// The synchronous equivalent of `Object::download`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn update_sync(&self) -> crate::Result<Self> {
-        self.update().await
-    }
-
     /// Deletes a single object with the specified name in the specified bucket.
     /// ### Example
     /// ```no_run
@@ -620,16 +526,6 @@ impl Object {
         } else {
             Err(Error::Google(response.json().await?))
         }
-    }
-
-    /// The synchronous equivalent of `Object::delete`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn delete_sync(bucket: &str, file_name: &str) -> Result<(), Error> {
-        Self::delete(bucket, file_name).await
     }
 
     /// Obtains a single object with the specified name in the specified bucket.
@@ -687,20 +583,6 @@ impl Object {
         }
     }
 
-    /// The synchronous equivalent of `Object::compose`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn compose_sync(
-        bucket: &str,
-        req: &ComposeRequest,
-        destination_object: &str,
-    ) -> crate::Result<Self> {
-        Self::compose(bucket, req, destination_object).await
-    }
-
     /// Copy this object to the target bucket and path
     /// ### Example
     /// ```no_run
@@ -738,16 +620,6 @@ impl Object {
             GoogleResponse::Success(s) => Ok(s),
             GoogleResponse::Error(e) => Err(e.into()),
         }
-    }
-
-    /// The synchronous equivalent of `Object::copy`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn copy_sync(&self, destination_bucket: &str, path: &str) -> crate::Result<Self> {
-        self.copy(destination_bucket, path).await
     }
 
     /// Moves a file from the current location to the target bucket and path.
@@ -794,16 +666,6 @@ impl Object {
             GoogleResponse::Success(s) => Ok(s.resource),
             GoogleResponse::Error(e) => Err(e.into()),
         }
-    }
-
-    /// The synchronous equivalent of `Object::rewrite`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn rewrite_sync(&self, destination_bucket: &str, path: &str) -> crate::Result<Self> {
-        self.rewrite(destination_bucket, path).await
     }
 
     /// Creates a [Signed Url](https://cloud.google.com/storage/docs/access-control/signed-urls)
@@ -1293,202 +1155,6 @@ mod tests {
         let download1 = client.head(&download_url1).send().await?;
         assert_eq!(download1.headers()["content-disposition"], "attachment");
         Ok(())
-    }
-
-    #[cfg(feature = "sync")]
-    mod sync {
-        use super::*;
-
-        #[test]
-        fn create() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            Object::create_sync(&bucket.name, vec![0, 1], "test-create", "text/plain")?;
-            Ok(())
-        }
-
-        #[test]
-        fn create_streamed() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let cursor = std::io::Cursor::new([0, 1]);
-            Object::create_streamed_sync(
-                &bucket.name,
-                cursor,
-                2,
-                "test-create-streamed",
-                "text/plain",
-            )?;
-            Ok(())
-        }
-
-        #[test]
-        fn list() -> Result<(), Box<dyn std::error::Error>> {
-            let test_bucket = crate::read_test_bucket_sync();
-            Object::list_sync(&test_bucket.name)?;
-            Ok(())
-        }
-
-        #[test]
-        fn list_prefix() -> Result<(), Box<dyn std::error::Error>> {
-            let test_bucket = crate::read_test_bucket_sync();
-
-            let prefix_names = [
-                "test-list-prefix/1",
-                "test-list-prefix/2",
-                "test-list-prefix/sub/1",
-                "test-list-prefix/sub/2",
-            ];
-
-            for name in &prefix_names {
-                Object::create_sync(&test_bucket.name, vec![0, 1], name, "text/plain")?;
-            }
-
-            let list = Object::list_prefix_sync(&test_bucket.name, "test-list-prefix/")?;
-            assert_eq!(list.len(), 4);
-            let list = Object::list_prefix_sync(&test_bucket.name, "test-list-prefix/sub")?;
-            assert_eq!(list.len(), 2);
-            Ok(())
-        }
-
-        #[test]
-        fn read() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            Object::create_sync(&bucket.name, vec![0, 1], "test-read", "text/plain")?;
-            Object::read_sync(&bucket.name, "test-read")?;
-            Ok(())
-        }
-
-        #[test]
-        fn download() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let content = b"hello world";
-            Object::create_sync(
-                &bucket.name,
-                content.to_vec(),
-                "test-download",
-                "application/octet-stream",
-            )?;
-
-            let data = Object::download_sync(&bucket.name, "test-download")?;
-            assert_eq!(data, content);
-
-            Ok(())
-        }
-
-        #[test]
-        fn update() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let mut obj =
-                Object::create_sync(&bucket.name, vec![0, 1], "test-update", "text/plain")?;
-            obj.content_type = Some("application/xml".to_string());
-            obj.update_sync()?;
-            Ok(())
-        }
-
-        #[test]
-        fn delete() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            Object::create_sync(&bucket.name, vec![0, 1], "test-delete", "text/plain")?;
-
-            Object::delete_sync(&bucket.name, "test-delete")?;
-
-            let list = Object::list_prefix_sync(&bucket.name, "test-delete")?;
-            assert!(list.is_empty());
-
-            Ok(())
-        }
-
-        #[test]
-        fn delete_nonexistent() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-
-            let nonexistent_object = "test-delete-nonexistent";
-
-            let delete_result = Object::delete_sync(&bucket.name, nonexistent_object);
-
-            if let Err(Error::Google(google_error_response)) = delete_result {
-                assert!(google_error_response.to_string().contains(&format!(
-                    "No such object: {}/{}",
-                    bucket.name, nonexistent_object
-                )));
-            } else {
-                panic!("Expected a Google error, instead got {:?}", delete_result);
-            }
-
-            Ok(())
-        }
-
-        #[test]
-        fn compose() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let obj1 =
-                Object::create_sync(&bucket.name, vec![0, 1], "test-compose-1", "text/plain")?;
-            let obj2 =
-                Object::create_sync(&bucket.name, vec![2, 3], "test-compose-2", "text/plain")?;
-            let compose_request = ComposeRequest {
-                kind: "storage#composeRequest".to_string(),
-                source_objects: vec![
-                    SourceObject {
-                        name: obj1.name.clone(),
-                        generation: None,
-                        object_preconditions: None,
-                    },
-                    SourceObject {
-                        name: obj2.name.clone(),
-                        generation: None,
-                        object_preconditions: None,
-                    },
-                ],
-                destination: None,
-            };
-            let obj3 = Object::compose_sync(&bucket.name, &compose_request, "test-concatted-file")?;
-            let url = obj3.download_url(100)?;
-            let content = reqwest::blocking::get(&url)?.text()?;
-            assert_eq!(content.as_bytes(), &[0, 1, 2, 3]);
-            Ok(())
-        }
-
-        #[test]
-        fn copy() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let original =
-                Object::create_sync(&bucket.name, vec![2, 3], "test-copy", "text/plain")?;
-            original.copy_sync(&bucket.name, "test-copy - copy")?;
-            Ok(())
-        }
-
-        #[test]
-        fn rewrite() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let obj = Object::create_sync(&bucket.name, vec![0, 1], "test-rewrite", "text/plain")?;
-            let obj = obj.rewrite_sync(&bucket.name, "test-rewritten")?;
-            let url = obj.download_url(100)?;
-            let client = reqwest::blocking::Client::new();
-            let download = client.head(&url).send()?;
-            assert_eq!(download.status().as_u16(), 200);
-            Ok(())
-        }
-
-        #[test]
-        fn test_url_encoding() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let complicated_names = [
-                "asdf",
-                "asdf+1",
-                "asdf&&+1?=3,,-_()*&^%$#@!`~{}[]\\|:;\"'<>,.?/äöüëß",
-                "https://www.google.com",
-                "परिक्षण फाईल",
-                "测试很重要",
-            ];
-            for name in &complicated_names {
-                let _obj = Object::create_sync(&bucket.name, vec![0, 1], name, "text/plain")?;
-                let obj = Object::read_sync(&bucket.name, &name).unwrap();
-                let url = obj.download_url(100)?;
-                let client = reqwest::blocking::Client::new();
-                let download = client.head(&url).send()?;
-                assert_eq!(download.status().as_u16(), 200);
-            }
-            Ok(())
-        }
     }
 }
 

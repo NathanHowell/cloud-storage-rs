@@ -131,19 +131,6 @@ impl BucketAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `BucketAccessControl::create`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn create_sync(
-        bucket: &str,
-        new_bucket_access_control: &NewBucketAccessControl,
-    ) -> crate::Result<Self> {
-        Self::create(bucket, new_bucket_access_control).await
-    }
-
     /// Returns all `BucketAccessControl`s related to this bucket.
     ///
     /// ### Important
@@ -175,16 +162,6 @@ impl BucketAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `BucketAccessControl::list`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn list_sync(bucket: &str) -> crate::Result<Vec<Self>> {
-        Self::list(bucket).await
-    }
-
     /// Returns the ACL entry for the specified entity on the specified bucket.
     ///
     /// ### Important
@@ -214,16 +191,6 @@ impl BucketAccessControl {
             GoogleResponse::Success(s) => Ok(s),
             GoogleResponse::Error(e) => Err(e.into()),
         }
-    }
-
-    /// The synchronous equivalent of `BucketAccessControl::read`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn read_sync(bucket: &str, entity: &Entity) -> crate::Result<Self> {
-        Self::read(bucket, entity).await
     }
 
     /// Update this `BucketAccessControl`.
@@ -260,16 +227,6 @@ impl BucketAccessControl {
         }
     }
 
-    /// The synchronous equivalent of `BucketAccessControl::update`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn update_sync(&self) -> crate::Result<Self> {
-        self.update().await
-    }
-
     /// Permanently deletes the ACL entry for the specified entity on the specified bucket.
     ///
     /// ### Important
@@ -299,16 +256,6 @@ impl BucketAccessControl {
         } else {
             Err(crate::Error::Google(response.json().await?))
         }
-    }
-
-    /// The synchronous equivalent of `BucketAccessControl::delete`.
-    ///
-    /// ### Features
-    /// This function requires that the feature flag `sync` is enabled in `Cargo.toml`.
-    #[cfg(feature = "sync")]
-    #[tokio::main]
-    pub async fn delete_sync(self) -> crate::Result<()> {
-        self.delete().await
     }
 }
 
@@ -370,66 +317,5 @@ mod tests {
         acl.delete().await?;
         bucket.delete().await?;
         Ok(())
-    }
-
-    #[cfg(feature = "sync")]
-    mod sync {
-        use super::*;
-
-        #[test]
-        fn create() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            let new_bucket_access_control = NewBucketAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            BucketAccessControl::create_sync(&bucket.name, &new_bucket_access_control)?;
-            Ok(())
-        }
-
-        #[test]
-        fn list() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            BucketAccessControl::list_sync(&bucket.name)?;
-            Ok(())
-        }
-
-        #[test]
-        fn read() -> Result<(), Box<dyn std::error::Error>> {
-            let bucket = crate::read_test_bucket_sync();
-            BucketAccessControl::read_sync(&bucket.name, &Entity::AllUsers)?;
-            Ok(())
-        }
-
-        #[test]
-        fn update() -> Result<(), Box<dyn std::error::Error>> {
-            // use a seperate bucket to prevent synchronization issues
-            let bucket = crate::create_test_bucket_sync("test-update-bucket-access-controls");
-            let new_bucket_access_control = NewBucketAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            BucketAccessControl::create_sync(&bucket.name, &new_bucket_access_control)?;
-            let mut acl = BucketAccessControl::read_sync(&bucket.name, &Entity::AllUsers)?;
-            acl.entity = Entity::AllAuthenticatedUsers;
-            acl.update_sync()?;
-            bucket.delete_sync()?;
-            Ok(())
-        }
-
-        #[test]
-        fn delete() -> Result<(), Box<dyn std::error::Error>> {
-            // use a seperate bucket to prevent synchronization issues
-            let bucket = crate::create_test_bucket_sync("test-delete-bucket-access-controls");
-            let new_bucket_access_control = NewBucketAccessControl {
-                entity: Entity::AllUsers,
-                role: Role::Reader,
-            };
-            BucketAccessControl::create_sync(&bucket.name, &new_bucket_access_control)?;
-            let acl = BucketAccessControl::read_sync(&bucket.name, &Entity::AllUsers)?;
-            acl.delete_sync()?;
-            bucket.delete_sync()?;
-            Ok(())
-        }
     }
 }
