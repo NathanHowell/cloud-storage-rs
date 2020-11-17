@@ -18,7 +18,7 @@ pub use crate::resources::location::*;
 /// controls.
 ///
 /// A bucket is always owned by the project team owners group.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Bucket {
     /// The kind of item this is. For buckets, this is always `storage#bucket`.
@@ -92,7 +92,7 @@ pub struct Bucket {
 }
 
 /// A model that can be used to insert new buckets into Google Cloud Storage.
-#[derive(Debug, PartialEq, Default, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Default, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewBucket {
     /// The name of the bucket. See the bucket naming guidelines for more information.
@@ -141,7 +141,7 @@ pub struct NewBucket {
 }
 
 /// Contains information about how files are kept after deletion.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RetentionPolicy {
     /// The period of time, in seconds, that objects in the bucket must be retained and cannot be
@@ -157,7 +157,7 @@ pub struct RetentionPolicy {
 }
 
 /// Contains information about the Buckets IAM configuration.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IamConfiguration {
     /// The bucket's uniform bucket-level access configuration.
@@ -169,7 +169,7 @@ pub struct IamConfiguration {
 }
 
 /// Access that is configured for all objects in one go.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UniformBucketLevelAccess {
     /// Whether or not the bucket uses uniform bucket-level access. If set, access checks only use
@@ -184,7 +184,7 @@ pub struct UniformBucketLevelAccess {
 }
 
 /// Contains information about the encryption used for data in this Bucket.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Encryption {
     /// A Cloud KMS key that will be used to encrypt objects inserted into this bucket, if no
@@ -193,7 +193,7 @@ pub struct Encryption {
 }
 
 /// Contains information about an entity that is able to own a `Bucket`.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Owner {
     /// The entity, in the form project-owner-projectId.
@@ -203,7 +203,7 @@ pub struct Owner {
 }
 
 /// Contains configuration about how to visit the website linked to this Bucket.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Website {
     /// If the requested object path is missing, the service will ensure the path has a trailing
@@ -217,7 +217,7 @@ pub struct Website {
 }
 
 /// Contains information of where and how access logs to this bucket are maintained.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Logging {
     /// The destination bucket where the current bucket's logs should be placed.
@@ -227,7 +227,7 @@ pub struct Logging {
 }
 
 /// Contains information about whether a Bucket keeps track of its version.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Versioning {
     /// While set to true, versioning is fully enabled for this bucket.
@@ -235,7 +235,7 @@ pub struct Versioning {
 }
 
 /// Contains information about how OPTIONS requests for this Bucket are handled.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cors {
     /// The list of Origins eligible to receive CORS response headers. Note: "*" is permitted in the
@@ -254,7 +254,7 @@ pub struct Cors {
 }
 
 /// Contains a set of `Rule` Objects which together describe the way this lifecycle behaves
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Lifecycle {
     /// A lifecycle management rule, which is made of an action to take and the condition(s) under
@@ -263,7 +263,7 @@ pub struct Lifecycle {
 }
 
 /// An element of the lifecyle list.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Rule {
     /// The action to take.
@@ -273,7 +273,7 @@ pub struct Rule {
 }
 
 /// Represents an action that might be undertaken due to a `Condition`.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Action {
     /// Type of the action.
@@ -283,7 +283,7 @@ pub struct Action {
 }
 
 /// Type of the action.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ActionType {
     /// Deletes a Bucket.
     Delete,
@@ -292,7 +292,7 @@ pub enum ActionType {
 }
 
 /// A rule that might induce an `Action` if met.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Condition {
     /// Age of an object (in days). This condition is satisfied when an object reaches the specified
@@ -317,7 +317,7 @@ pub struct Condition {
 }
 
 /// Contains information about the payment structure of this bucket
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Billing {
     /// When set to true, Requester Pays is enabled for this bucket.
@@ -325,7 +325,7 @@ pub struct Billing {
 }
 
 /// The type of storage that is used. Pertains to availability, performance and cost.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StorageClass {
     /// Standard Storage is best for data that is frequently accessed ("hot" data) and/or stored for
@@ -354,7 +354,7 @@ pub enum StorageClass {
 }
 
 /// A representation of the IAM Policiy for a certain bucket.
-#[derive(Debug, PartialEq, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IamPolicy {
     /// The [Cloud IAM policy](https://cloud.google.com/iam/docs/policies#versions) version.
@@ -373,7 +373,7 @@ pub struct IamPolicy {
 
 /// An association between a role, which comes with a set of permissions, and members who may assume
 /// that role.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Binding {
     /// The role to which members belong. Two types of roles are supported: standard IAM roles,
@@ -413,7 +413,7 @@ pub struct Binding {
 }
 
 /// A condition object associated with a binding.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IamCondition {
     /// Title of the condition. For example, "expires_end_of_2018".
@@ -428,7 +428,7 @@ pub struct IamCondition {
 
 /// All possible roles that can exist in the IAM system. For a more comprehensive version, check
 /// [Googles Documentation](https://cloud.google.com/storage/docs/access-control/iam-roles).
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum IamRole {
     /// Standard roles can be applied to either buckets or projects.
@@ -442,7 +442,7 @@ pub enum IamRole {
 /// The following enum contains Cloud Identity and Access Management (Cloud IAM) roles that are
 /// associated with Cloud Storage and lists the permissions that are contained in each role. Unless
 /// otherwise noted, these roles can be applied either to entire projects or specific buckets.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum StandardIamRole {
     /// Allows users to create objects. Does not give permission to view, delete, or overwrite
     /// objects.
@@ -470,7 +470,7 @@ pub enum StandardIamRole {
 
 /// The following enum contains primitive roles and the Cloud Storage permissions that these roles
 /// contain. Primitive roles cannot be added at the bucket-level.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum PrimitiveIamRole {
     /// Grants permission to list buckets as well as view bucket metadata, excluding ACLs, when
     /// listing. Also grants permission to list and get HMAC keys in the project.
@@ -488,7 +488,7 @@ pub enum PrimitiveIamRole {
 
 /// The following enum contains Cloud IAM roles that are equivalent to Access Control List (ACL)
 /// permissions. These Cloud IAM roles can only be applied to a bucket, not a project.
-#[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum LegacyIamRole {
     /// Grants permission to view objects and their metadata, excluding ACLs.
     #[serde(rename = "roles/storage.legacyObjectReader")]
@@ -526,7 +526,7 @@ pub enum LegacyIamRole {
 }
 
 /// The request needed to perform the Object::test_iam_permission function.
-#[derive(Debug, PartialEq, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TestIamPermission {
     /// The kind of item this is.
@@ -551,23 +551,28 @@ impl Bucket {
     /// use cloud_storage::bucket::{Bucket, NewBucket};
     /// use cloud_storage::bucket::{Location, MultiRegion};
     ///
+    /// let cloud_storage = cloud_storage::Client::new();
+    ///
     /// let new_bucket = NewBucket {
     ///    name: "cloud-storage-rs-doc-1".to_string(), // this is the only mandatory field
     ///    location: Location::Multi(MultiRegion::Eu),
     ///    ..Default::default()
     /// };
-    /// let bucket = Bucket::create(&new_bucket).await?;
+    /// let bucket = Bucket::create(&cloud_storage, &new_bucket).await?;
     /// # bucket.delete().await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn create(new_bucket: &NewBucket) -> crate::Result<Self> {
+    pub async fn create(
+        cloud_storage: &crate::Client,
+        new_bucket: &NewBucket,
+    ) -> crate::Result<Self> {
         let url = format!("{}/b/", crate::BASE_URL);
-        let project = &crate::SERVICE_ACCOUNT.project_id;
+        let project = &cloud_storage.service_account.project_id;
         let query = [("project", project)];
-        let result: GoogleResponse<Self> = crate::CLIENT
+        let result: GoogleResponse<Self> = cloud_storage
             .post(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .query(&query)
             .json(new_bucket)
             .send()
@@ -589,28 +594,27 @@ impl Bucket {
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use cloud_storage::Bucket;
+    /// use cloud_storage::{Client, Bucket};
     ///
-    /// let buckets = Bucket::list().await?;
+    /// let cloud_storage = Client::new();
+    /// let buckets = Bucket::list(&cloud_storage).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn list() -> Result<Vec<Self>, Error> {
+    pub async fn list(cloud_storage: &crate::Client) -> Result<Vec<Self>, Error> {
         let url = format!("{}/b/", crate::BASE_URL);
-        let project = &crate::SERVICE_ACCOUNT.project_id;
+        let project = &cloud_storage.service_account.project_id;
         let query = [("project", project)];
-        let result: GoogleResponse<ListResponse<Self>> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .query(&query)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s.items),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<ListResponse<Self>>>()
+            .await?
+            .into_result()
+            .map(|response| response.items)
     }
 
     /// Returns a single `Bucket` by its name. If the Bucket does not exist, an error is returned.
@@ -618,32 +622,31 @@ impl Bucket {
     /// ```
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// use cloud_storage::Bucket;
+    /// use cloud_storage::{Bucket, Client};
+    ///
+    /// let cloud_storage = Client::new();
     /// # use cloud_storage::bucket::NewBucket;
     /// # let new_bucket = NewBucket {
     /// #   name: "cloud-storage-rs-doc-2".to_string(),
     /// #    ..Default::default()
     /// # };
-    /// # let _ = Bucket::create(&new_bucket).await?;
+    /// # let _ = Bucket::create(&cloud_storage, &new_bucket).await?;
     ///
-    /// let bucket = Bucket::read("cloud-storage-rs-doc-2").await?;
+    /// let bucket = Bucket::read(&cloud_storage, "cloud-storage-rs-doc-2").await?;
     /// # bucket.delete().await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn read(name: &str) -> crate::Result<Self> {
+    pub async fn read(cloud_storage: &crate::Client, name: &str) -> crate::Result<Self> {
         let url = format!("{}/b/{}", crate::BASE_URL, name);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Update an existing `Bucket`. If you declare you bucket as mutable, you can edit its fields.
@@ -671,20 +674,17 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn update(&self) -> crate::Result<Self> {
+    pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!("{}/b/{}", crate::BASE_URL, self.name);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .put(&url)
-            .headers(crate::get_headers().await?)
-            .json(self)
+            .await?
+            .json(&self)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Delete an existing `Bucket`. This permanently removes a bucket from Google Cloud Storage.
@@ -707,18 +707,16 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn delete(self) -> crate::Result<()> {
+    pub async fn delete(self, cloud_storage: &crate::Client) -> crate::Result<()> {
         let url = format!("{}/b/{}", crate::BASE_URL, self.name);
-        let response = crate::CLIENT
+        cloud_storage
             .delete(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
-            .await?;
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(Error::Google(response.json().await?))
-        }
+            .await?
+            .json::<GoogleResponse<()>>()
+            .await?
+            .into_result()
     }
 
     /// Returns the [IAM Policy](https://cloud.google.com/iam/docs/) for this bucket.
@@ -740,19 +738,16 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn get_iam_policy(&self) -> crate::Result<IamPolicy> {
+    pub async fn get_iam_policy(&self, cloud_storage: &crate::Client) -> crate::Result<IamPolicy> {
         let url = format!("{}/b/{}/iam", crate::BASE_URL, self.name);
-        let result: GoogleResponse<IamPolicy> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<IamPolicy>>()
+            .await?
+            .into_result()
     }
 
     /// Updates the [IAM Policy](https://cloud.google.com/iam/docs/) for this bucket.
@@ -786,20 +781,21 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn set_iam_policy(&self, iam: &IamPolicy) -> crate::Result<IamPolicy> {
+    pub async fn set_iam_policy(
+        &self,
+        cloud_storage: &crate::Client,
+        iam: IamPolicy,
+    ) -> crate::Result<IamPolicy> {
         let url = format!("{}/b/{}/iam", crate::BASE_URL, self.name);
-        let result: GoogleResponse<IamPolicy> = crate::CLIENT
+        cloud_storage
             .put(&url)
-            .headers(crate::get_headers().await?)
-            .json(iam)
+            .await?
+            .json(&iam)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<IamPolicy>>()
+            .await?
+            .into_result()
     }
 
     /// Checks whether the user provided in the service account has this permission.
@@ -814,25 +810,26 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn test_iam_permission(&self, permission: &str) -> crate::Result<TestIamPermission> {
+    pub async fn test_iam_permission(
+        &self,
+        cloud_storage: &crate::Client,
+        permission: &str,
+    ) -> crate::Result<TestIamPermission> {
         if permission == "storage.buckets.list" || permission == "storage.buckets.create" {
             return Err(Error::new(
                 "tested permission must not be `storage.buckets.list` or `storage.buckets.create`",
             ));
         }
         let url = format!("{}/b/{}/iam/testPermissions", crate::BASE_URL, self.name);
-        let result: GoogleResponse<TestIamPermission> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .query(&[("permissions", permission)])
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<TestIamPermission>>()
+            .await?
+            .into_result()
     }
 }
 
@@ -865,61 +862,69 @@ mod tests {
             }),
             ..Default::default()
         };
-        let bucket = Bucket::create(&new_bucket).await?;
-        bucket.delete().await?;
+        let client = crate::Client::new();
+        let bucket = Bucket::create(&client, &new_bucket).await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        Bucket::list().await?;
+        let client = crate::Client::new();
+        Bucket::list(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let bucket = crate::create_test_bucket("test-read").await;
-        let also_bucket = Bucket::read(&bucket.name).await?;
+        let client = crate::Client::new();
+        let bucket = crate::create_test_bucket(&client, "test-read").await;
+        let also_bucket = Bucket::read(&client, &bucket.name).await?;
         assert_eq!(bucket, also_bucket);
-        bucket.delete().await?;
-        assert!(also_bucket.delete().await.is_err());
+        bucket.delete(&client).await?;
+        assert!(also_bucket.delete(&client).await.is_err());
         Ok(())
     }
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let mut bucket = crate::create_test_bucket("test-update").await;
+        let client = crate::Client::new();
+        let mut bucket = crate::create_test_bucket(&client, "test-update").await;
         bucket.retention_policy = Some(RetentionPolicy {
             retention_period: 50,
             effective_time: chrono::Utc::now() + chrono::Duration::seconds(50),
             is_locked: Some(false),
         });
-        bucket.update().await?;
-        let updated = Bucket::read(&bucket.name).await?;
+        let name = bucket.name.clone();
+        let bucket = bucket.update(&client).await?;
+        let updated = Bucket::read(&client, &name).await?;
         assert_eq!(updated.retention_policy.unwrap().retention_period, 50);
-        bucket.delete().await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     // used a lot throughout the other tests, but included for completeness
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let bucket = crate::create_test_bucket("test-delete").await;
-        bucket.delete().await?;
+        let client = crate::Client::new();
+        let bucket = crate::create_test_bucket(&client, "test-delete").await;
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn get_iam_policy() -> Result<(), Box<dyn std::error::Error>> {
-        let bucket = crate::create_test_bucket("test-get-iam-policy").await;
-        bucket.get_iam_policy().await?;
-        bucket.delete().await?;
+        let client = crate::Client::new();
+        let bucket = crate::create_test_bucket(&client, "test-get-iam-policy").await;
+        bucket.get_iam_policy(&client).await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn set_iam_policy() -> Result<(), Box<dyn std::error::Error>> {
-        let bucket = crate::create_test_bucket("test-set-iam-policy").await;
+        let client = crate::Client::new();
+        let bucket = crate::create_test_bucket(&client, "test-set-iam-policy").await;
         let iam_policy = IamPolicy {
             bindings: vec![Binding {
                 role: IamRole::Standard(StandardIamRole::ObjectViewer),
@@ -928,17 +933,23 @@ mod tests {
             }],
             ..Default::default()
         };
-        bucket.set_iam_policy(&iam_policy).await?;
-        assert_eq!(bucket.get_iam_policy().await?.bindings, iam_policy.bindings);
-        bucket.delete().await?;
+        bucket.set_iam_policy(&client, iam_policy.clone()).await?;
+        assert_eq!(
+            bucket.get_iam_policy(&client).await?.bindings,
+            iam_policy.bindings
+        );
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn test_iam_permission() -> Result<(), Box<dyn std::error::Error>> {
-        let bucket = crate::create_test_bucket("test-test-ia-permission").await;
-        bucket.test_iam_permission("storage.buckets.get").await?;
-        bucket.delete().await?;
+        let client = crate::Client::new();
+        let bucket = crate::create_test_bucket(&client, "test-test-ia-permission").await;
+        bucket
+            .test_iam_permission(&client, "storage.buckets.get")
+            .await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 }

@@ -98,24 +98,34 @@ pub use crate::resources::{
 };
 use crate::token::Token;
 pub use download_options::DownloadOptions;
+use reqwest::{IntoUrl, RequestBuilder};
 use tokio::sync::Mutex;
 
-lazy_static::lazy_static! {
+///
+///
+pub struct Client {
     /// Static `Token` struct that caches
-    static ref TOKEN_CACHE: Mutex<Token> = Mutex::new(Token::new(
-        "https://www.googleapis.com/auth/devstorage.full_control",
-    ));
-
-    static ref IAM_TOKEN_CACHE: Mutex<Token> = Mutex::new(Token::new(
-        "https://www.googleapis.com/auth/iam"
-    ));
+    token_cache: Mutex<Token>,
 
     /// The struct is the parsed service account json file. It is publicly exported to enable easier
     /// debugging of which service account is currently used. It is of the type
     /// [ServiceAccount](service_account/struct.ServiceAccount.html).
-    pub static ref SERVICE_ACCOUNT: ServiceAccount = ServiceAccount::get();
+    pub service_account: ServiceAccount,
 
-    static ref CLIENT: reqwest::Client = reqwest::Client::new();
+    client: reqwest::Client,
+}
+
+impl Client {
+    ///
+    pub fn new() -> Self {
+        Client {
+            token_cache: Mutex::new(Token::new(
+                "https://www.googleapis.com/auth/devstorage.full_control",
+            )),
+            service_account: ServiceAccount::get(),
+            client: reqwest::Client::new(),
+        }
+    }
 }
 
 /// A type alias where the error is set to be `cloud_storage::Error`.
@@ -123,15 +133,33 @@ pub type Result<T> = std::result::Result<T, crate::Error>;
 
 const BASE_URL: &str = "https://www.googleapis.com/storage/v1";
 
-async fn get_headers() -> Result<reqwest::header::HeaderMap> {
-    let mut result = reqwest::header::HeaderMap::new();
-    let mut guard = TOKEN_CACHE.lock().await;
-    let token = guard.get().await?;
-    result.insert(
-        reqwest::header::AUTHORIZATION,
-        format!("Bearer {}", token).parse().unwrap(),
-    );
-    Ok(result)
+impl Client {
+    async fn get_headers1(&self) -> Result<reqwest::header::HeaderMap> {
+        let mut result = reqwest::header::HeaderMap::new();
+        let mut guard = self.token_cache.lock().await;
+        let token = guard.get(self).await?;
+        result.insert(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", token).parse().unwrap(),
+        );
+        Ok(result)
+    }
+
+    async fn delete<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
+        Ok(self.client.delete(url).headers(self.get_headers1().await?))
+    }
+
+    async fn get<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
+        Ok(self.client.get(url).headers(self.get_headers1().await?))
+    }
+
+    async fn post<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
+        Ok(self.client.post(url).headers(self.get_headers1().await?))
+    }
+
+    async fn put<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
+        Ok(self.client.put(url).headers(self.get_headers1().await?))
+    }
 }
 
 fn from_str<'de, T, D>(deserializer: D) -> std::result::Result<T, D::Error>
@@ -169,12 +197,16 @@ where
 async fn read_test_bucket() -> Bucket {
     dotenv::dotenv().ok();
     let name = std::env::var("TEST_BUCKET").unwrap();
-    match Bucket::read(&name).await {
+    let client = crate::Client::new();
+    match Bucket::read(&client, &name).await {
         Ok(bucket) => bucket,
-        Err(_not_found) => Bucket::create(&NewBucket {
-            name,
-            ..NewBucket::default()
-        })
+        Err(_not_found) => Bucket::create(
+            &client,
+            &NewBucket {
+                name,
+                ..NewBucket::default()
+            },
+        )
         .await
         .unwrap(),
     }
@@ -183,7 +215,7 @@ async fn read_test_bucket() -> Bucket {
 // since all tests run in parallel, we need to make sure we do not create multiple buckets with
 // the same name in each test.
 #[cfg(test)]
-async fn create_test_bucket(name: &str) -> Bucket {
+async fn create_test_bucket(client: &crate::Client, name: &str) -> Bucket {
     std::thread::sleep(std::time::Duration::from_millis(1500)); // avoid getting rate limited
 
     dotenv::dotenv().ok();
@@ -193,8 +225,8 @@ async fn create_test_bucket(name: &str) -> Bucket {
         name,
         ..NewBucket::default()
     };
-    match Bucket::create(&new_bucket).await {
+    match Bucket::create(&client, &new_bucket).await {
         Ok(bucket) => bucket,
-        Err(_alread_exists) => Bucket::read(&new_bucket.name).await.unwrap(),
+        Err(_alread_exists) => Bucket::read(&client, &new_bucket.name).await.unwrap(),
     }
 }

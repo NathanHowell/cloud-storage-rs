@@ -4,6 +4,7 @@ use crate::resources::common::ListResponse;
 use crate::resources::object_access_control::ObjectAccessControl;
 use futures::{stream, Stream, TryStream};
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
+use reqwest::header::HeaderMap;
 
 /// A resource representing a file in Google Cloud Storage.
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -173,6 +174,7 @@ impl Object {
     /// # }
     /// ```
     pub async fn create(
+        cloud_storage: &crate::Client,
         bucket: &str,
         file: Vec<u8>,
         filename: &str,
@@ -188,20 +190,17 @@ impl Object {
             percent_encode(&bucket),
             percent_encode(&filename),
         );
-        let mut headers = crate::get_headers().await?;
-        headers.insert(CONTENT_TYPE, mime_type.parse()?);
-        headers.insert(CONTENT_LENGTH, file.len().to_string().parse()?);
-        let response = crate::CLIENT
+        cloud_storage
             .post(url)
-            .headers(headers)
+            .await?
+            .header(CONTENT_TYPE, mime_type)
+            .header(CONTENT_LENGTH, file.len())
             .body(file)
             .send()
-            .await?;
-        if response.status() == 200 {
-            Ok(serde_json::from_str(&response.text().await?)?)
-        } else {
-            Err(Error::new(&response.text().await?))
-        }
+            .await?
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Create a new object. This works in the same way as `Object::create`, except it does not need
@@ -222,6 +221,7 @@ impl Object {
     /// # }
     /// ```
     pub async fn create_streamed<S>(
+        cloud_storage: &crate::Client,
         bucket: &str,
         stream: S,
         length: impl Into<Option<u64>>,
@@ -243,24 +243,22 @@ impl Object {
             percent_encode(&bucket),
             percent_encode(&filename),
         );
-        let mut headers = crate::get_headers().await?;
+        let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, mime_type.parse()?);
         if let Some(length) = length.into() {
             headers.insert(CONTENT_LENGTH, length.into());
         }
 
-        let body = reqwest::Body::wrap_stream(stream);
-        let response = crate::CLIENT
+        cloud_storage
             .post(url)
+            .await?
             .headers(headers)
-            .body(body)
+            .body(reqwest::Body::wrap_stream(stream))
             .send()
-            .await?;
-        if response.status() == 200 {
-            Ok(serde_json::from_str(&response.text().await?)?)
-        } else {
-            Err(Error::new(&response.text().await?))
-        }
+            .await?
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Obtain a list of objects within this Bucket.
@@ -274,10 +272,11 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn list(
-        bucket: &str,
-    ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + '_, Error> {
-        Self::list_from(bucket, None).await
+    pub async fn list<'a>(
+        cloud_storage: &'a crate::Client,
+        bucket: &'a str,
+    ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + 'a, Error> {
+        Self::list_from(cloud_storage, bucket, None).await
     }
 
     /// Obtain a list of objects by prefix within this Bucket .
@@ -292,13 +291,15 @@ impl Object {
     /// # }
     /// ```
     pub async fn list_prefix<'a>(
+        cloud_storage: &'a crate::Client,
         bucket: &'a str,
         prefix: &'a str,
     ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + 'a, Error> {
-        Self::list_from(bucket, Some(prefix)).await
+        Self::list_from(cloud_storage, bucket, Some(prefix)).await
     }
 
     async fn list_from<'a>(
+        cloud_storage: &'a crate::Client,
         bucket: &'a str,
         prefix: Option<&'a str>,
     ) -> Result<impl Stream<Item = Result<Vec<Self>, Error>> + 'a, Error> {
@@ -312,10 +313,10 @@ impl Object {
 
         Ok(stream::unfold(ListState::Start, move |state| async move {
             let url = format!("{}/b/{}/o", crate::BASE_URL, percent_encode(bucket));
-            let headers = match crate::get_headers().await {
-                Ok(h) => h,
-                Err(e) => return Some((Err(e), state)),
-            };
+            // let headers = match crate::get_headers().await {
+            //     Ok(h) => h,
+            //     Err(e) => return Some((Err(e), state)),
+            // };
 
             let mut query = match state.clone() {
                 HasMore(page_token) => vec![("pageToken", page_token)],
@@ -327,10 +328,11 @@ impl Object {
                 query.push(("prefix", prefix.to_string()));
             };
 
-            let response = crate::CLIENT
+            let response = cloud_storage
                 .get(&url)
+                .await
+                .ok()? // FIXME: this isn't right (should yield an error)
                 .query(&query)
-                .headers(headers)
                 .send()
                 .await;
             let response = match response {
@@ -338,12 +340,10 @@ impl Object {
                 Err(e) => return Some((Err(e.into()), state)),
             };
 
-            let json = match response.json().await {
+            let result = match response.json::<GoogleResponse<ListResponse<Self>>>().await {
                 Ok(json) => json,
                 Err(e) => return Some((Err(e.into()), state)),
             };
-
-            let result: GoogleResponse<ListResponse<Self>> = json;
 
             let response_body = match result {
                 GoogleResponse::Success(success) => success,
@@ -373,24 +373,25 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn read(bucket: &str, file_name: &str) -> crate::Result<Self> {
+    pub async fn read(
+        cloud_storage: &crate::Client,
+        bucket: &str,
+        file_name: &str,
+    ) -> crate::Result<Self> {
         let url = format!(
             "{}/b/{}/o/{}",
             crate::BASE_URL,
             percent_encode(bucket),
             percent_encode(file_name),
         );
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Download the content of the object with the specified name in the specified bucket.
@@ -404,16 +405,20 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn download(bucket: &str, file_name: &str) -> Result<Vec<u8>, Error> {
+    pub async fn download(
+        cloud_storage: &crate::Client,
+        bucket: &str,
+        file_name: &str,
+    ) -> Result<Vec<u8>, Error> {
         let url = format!(
             "{}/b/{}/o/{}?alt=media",
             crate::BASE_URL,
             percent_encode(bucket),
             percent_encode(file_name),
         );
-        Ok(crate::CLIENT
+        Ok(cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
             .bytes()
@@ -441,6 +446,7 @@ impl Object {
     /// # }
     /// ```
     pub async fn download_streamed(
+        cloud_storage: &crate::Client,
         bucket: &str,
         file_name: &str,
     ) -> crate::Result<impl Stream<Item = crate::Result<u8>> + Unpin> {
@@ -451,11 +457,7 @@ impl Object {
             percent_encode(bucket),
             percent_encode(file_name),
         );
-        let res = crate::CLIENT
-            .get(&url)
-            .headers(crate::get_headers().await?)
-            .send()
-            .await?;
+        let res = cloud_storage.get(&url).await?.send().await?;
         let size = res.content_length();
         let bytes = res
             .bytes_stream()
@@ -477,25 +479,22 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn update(&self) -> crate::Result<Self> {
+    pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!(
             "{}/b/{}/o/{}",
             crate::BASE_URL,
             percent_encode(&self.bucket),
             percent_encode(&self.name),
         );
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .put(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .json(&self)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Deletes a single object with the specified name in the specified bucket.
@@ -509,23 +508,25 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn delete(bucket: &str, file_name: &str) -> Result<(), Error> {
+    pub async fn delete(
+        cloud_storage: &crate::Client,
+        bucket: &str,
+        file_name: &str,
+    ) -> Result<(), Error> {
         let url = format!(
             "{}/b/{}/o/{}",
             crate::BASE_URL,
             percent_encode(bucket),
             percent_encode(file_name),
         );
-        let response = crate::CLIENT
+        cloud_storage
             .delete(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
-            .await?;
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(Error::Google(response.json().await?))
-        }
+            .await?
+            .json::<GoogleResponse<()>>()
+            .await?
+            .into_result()
     }
 
     /// Obtains a single object with the specified name in the specified bucket.
@@ -559,6 +560,7 @@ impl Object {
     /// # }
     /// ```
     pub async fn compose(
+        cloud_storage: &crate::Client,
         bucket: &str,
         req: &ComposeRequest,
         destination_object: &str,
@@ -569,18 +571,15 @@ impl Object {
             percent_encode(&bucket),
             percent_encode(&destination_object)
         );
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .post(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .json(req)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Copy this object to the target bucket and path
@@ -596,7 +595,12 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn copy(&self, destination_bucket: &str, path: &str) -> crate::Result<Self> {
+    pub async fn copy(
+        &self,
+        cloud_storage: &crate::Client,
+        destination_bucket: &str,
+        path: &str,
+    ) -> crate::Result<Self> {
         use reqwest::header::CONTENT_LENGTH;
 
         let url = format!(
@@ -607,19 +611,15 @@ impl Object {
             dBucket = percent_encode(&destination_bucket),
             dObject = percent_encode(&path),
         );
-        let mut headers = crate::get_headers().await?;
-        headers.insert(CONTENT_LENGTH, "0".parse()?);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .post(&url)
-            .headers(headers)
+            .await?
+            .header(CONTENT_LENGTH, 0)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Moves a file from the current location to the target bucket and path.
@@ -642,7 +642,12 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn rewrite(&self, destination_bucket: &str, path: &str) -> crate::Result<Self> {
+    pub async fn rewrite(
+        &self,
+        cloud_storage: &crate::Client,
+        destination_bucket: &str,
+        path: &str,
+    ) -> crate::Result<Self> {
         use reqwest::header::CONTENT_LENGTH;
 
         let url = format!(
@@ -653,19 +658,16 @@ impl Object {
             dBucket = percent_encode(destination_bucket),
             dObject = percent_encode(path),
         );
-        let mut headers = crate::get_headers().await?;
-        headers.insert(CONTENT_LENGTH, "0".parse()?);
-        let result: GoogleResponse<RewriteResponse> = crate::CLIENT
+        cloud_storage
             .post(&url)
-            .headers(headers)
+            .await?
+            .header(CONTENT_LENGTH, 0)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s.resource),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<RewriteResponse>>()
+            .await?
+            .into_result()
+            .map(|s| s.resource)
     }
 
     /// Creates a [Signed Url](https://cloud.google.com/storage/docs/access-control/signed-urls)
@@ -684,8 +686,12 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn download_url(&self, duration: u32) -> crate::Result<String> {
-        self.sign(&self.name, duration, "GET", None)
+    pub fn download_url(
+        &self,
+        cloud_storage: &crate::Client,
+        duration: chrono::Duration,
+    ) -> crate::Result<String> {
+        self.sign(cloud_storage, &self.name, duration, "GET", None)
     }
 
     /// Creates a [Signed Url](https://cloud.google.com/storage/docs/access-control/signed-urls)
@@ -706,10 +712,17 @@ impl Object {
     /// ```
     pub fn download_url_with(
         &self,
-        duration: u32,
+        cloud_storage: &crate::Client,
+        duration: chrono::Duration,
         opts: crate::DownloadOptions,
     ) -> crate::Result<String> {
-        self.sign(&self.name, duration, "GET", opts.content_disposition)
+        self.sign(
+            cloud_storage,
+            &self.name,
+            duration,
+            "GET",
+            opts.content_disposition,
+        )
     }
 
     // /// Creates a [Signed Url](https://cloud.google.com/storage/docs/access-control/signed-urls)
@@ -722,14 +735,15 @@ impl Object {
     #[inline(always)]
     fn sign(
         &self,
+        cloud_storage: &crate::Client,
         file_path: &str,
-        duration: u32,
+        duration: chrono::Duration,
         http_verb: &str,
         content_disposition: Option<String>,
     ) -> crate::Result<String> {
         use openssl::sha;
 
-        if duration > 604800 {
+        if duration.num_seconds() > 604800 {
             let msg = format!(
                 "duration may not be greater than 604800, but was {}",
                 duration
@@ -756,6 +770,7 @@ impl Object {
         let issue_date = chrono::Utc::now();
         let file_path = self.path_to_resource(file_path);
         let query_string = Self::get_canonical_query_string(
+            cloud_storage,
             &issue_date,
             duration,
             &signed_headers,
@@ -781,7 +796,7 @@ impl Object {
         );
 
         // 4 sign the string to sign with RSA - SHA256
-        let buffer = Self::sign_str(&string_to_sign)?;
+        let buffer = Self::sign_str(cloud_storage, &string_to_sign)?;
         let signature = hex::encode(&buffer);
 
         // 5 construct the signed url
@@ -823,14 +838,15 @@ impl Object {
 
     #[inline(always)]
     fn get_canonical_query_string(
+        cloud_storage: &crate::Client,
         date: &chrono::DateTime<chrono::Utc>,
-        exp: u32,
+        exp: chrono::Duration,
         headers: &str,
         content_disposition: Option<String>,
     ) -> String {
         let credential = format!(
             "{authorizer}/{scope}",
-            authorizer = crate::SERVICE_ACCOUNT.client_email,
+            authorizer = cloud_storage.service_account.client_email,
             scope = Self::get_credential_scope(date),
         );
         let mut s = format!(
@@ -842,7 +858,7 @@ impl Object {
             algo = "GOOG4-RSA-SHA256",
             cred = percent_encode(&credential),
             date = date.format("%Y%m%dT%H%M%SZ"),
-            exp = exp,
+            exp = exp.num_seconds(),
             // signed="host",
             signed = headers,
         );
@@ -867,10 +883,10 @@ impl Object {
     }
 
     #[inline(always)]
-    fn sign_str(message: &str) -> Result<Vec<u8>, Error> {
+    fn sign_str(cloud_storage: &crate::Client, message: &str) -> Result<Vec<u8>, Error> {
         use openssl::{hash::MessageDigest, pkey::PKey, sign::Signer};
 
-        let key = PKey::private_key_from_pem(crate::SERVICE_ACCOUNT.private_key.as_bytes())?;
+        let key = PKey::private_key_from_pem(cloud_storage.service_account.private_key.as_bytes())?;
         let mut signer = Signer::new(MessageDigest::sha256(), &key)?;
         signer.update(message.as_bytes())?;
         Ok(signer.sign_to_vec()?)
@@ -898,22 +914,33 @@ fn percent_encode(input: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Duration;
     use futures::{StreamExt, TryStreamExt};
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        Object::create(&bucket.name, vec![0, 1], "test-create", "text/plain").await?;
+        Object::create(
+            &client,
+            &bucket.name,
+            vec![0, 1],
+            "test-create",
+            "text/plain",
+        )
+        .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn create_streamed() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let stream = stream::iter([0u8, 1].iter())
             .map(Ok::<_, Box<dyn std::error::Error + Send + Sync>>)
             .map_ok(|&b| bytes::BytesMut::from(&[b][..]));
         Object::create_streamed(
+            &client,
             &bucket.name,
             stream,
             2,
@@ -926,16 +953,21 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let test_bucket = crate::read_test_bucket().await;
-        let _v: Vec<Object> = Object::list(&test_bucket.name).await?.try_concat().await?;
+        let _v: Vec<Object> = Object::list(&client, &test_bucket.name)
+            .await?
+            .try_concat()
+            .await?;
         Ok(())
     }
 
     async fn flattened_list_prefix_stream(
+        client: &crate::Client,
         bucket: &str,
         prefix: &str,
     ) -> Result<Vec<Object>, Box<dyn std::error::Error>> {
-        Ok(Object::list_prefix(bucket, prefix)
+        Ok(Object::list_prefix(client, bucket, prefix)
             .await?
             .try_concat()
             .await?)
@@ -943,6 +975,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_prefix() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let test_bucket = crate::read_test_bucket().await;
 
         let prefix_names = [
@@ -953,29 +986,34 @@ mod tests {
         ];
 
         for name in &prefix_names {
-            Object::create(&test_bucket.name, vec![0, 1], name, "text/plain").await?;
+            Object::create(&client, &test_bucket.name, vec![0, 1], name, "text/plain").await?;
         }
 
-        let list = flattened_list_prefix_stream(&test_bucket.name, "test-list-prefix/").await?;
+        let list =
+            flattened_list_prefix_stream(&client, &test_bucket.name, "test-list-prefix/").await?;
         assert_eq!(list.len(), 4);
-        let list = flattened_list_prefix_stream(&test_bucket.name, "test-list-prefix/sub").await?;
+        let list = flattened_list_prefix_stream(&client, &test_bucket.name, "test-list-prefix/sub")
+            .await?;
         assert_eq!(list.len(), 2);
         Ok(())
     }
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        Object::create(&bucket.name, vec![0, 1], "test-read", "text/plain").await?;
-        Object::read(&bucket.name, "test-read").await?;
+        Object::create(&client, &bucket.name, vec![0, 1], "test-read", "text/plain").await?;
+        Object::read(&client, &bucket.name, "test-read").await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn download() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let content = b"hello world";
         Object::create(
+            &client,
             &bucket.name,
             content.to_vec(),
             "test-download",
@@ -983,7 +1021,7 @@ mod tests {
         )
         .await?;
 
-        let data = Object::download(&bucket.name, "test-download").await?;
+        let data = Object::download(&client, &bucket.name, "test-download").await?;
         assert_eq!(data, content);
 
         Ok(())
@@ -991,9 +1029,11 @@ mod tests {
 
     #[tokio::test]
     async fn download_streamed() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let content = b"hello world";
         Object::create(
+            &client,
             &bucket.name,
             content.to_vec(),
             "test-download",
@@ -1001,7 +1041,7 @@ mod tests {
         )
         .await?;
 
-        let mut result = Object::download_streamed(&bucket.name, "test-download").await?;
+        let mut result = Object::download_streamed(&client, &bucket.name, "test-download").await?;
         let mut data = Vec::new();
         for part in result.next().await {
             data.push(part?);
@@ -1014,9 +1054,11 @@ mod tests {
 
     #[tokio::test]
     async fn download_streamed_large() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let content = vec![5u8; 1_000_000];
         Object::create(
+            &client,
             &bucket.name,
             content.to_vec(),
             "test-download-large",
@@ -1024,7 +1066,8 @@ mod tests {
         )
         .await?;
 
-        let mut result = Object::download_streamed(&bucket.name, "test-download-large").await?;
+        let mut result =
+            Object::download_streamed(&client, &bucket.name, "test-download-large").await?;
         let mut data: Vec<u8> = Vec::new();
         while let Some(part) = result.next().await {
             data.push(part?);
@@ -1036,21 +1079,38 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        let mut obj = Object::create(&bucket.name, vec![0, 1], "test-update", "text/plain").await?;
+        let mut obj = Object::create(
+            &client,
+            &bucket.name,
+            vec![0, 1],
+            "test-update",
+            "text/plain",
+        )
+        .await?;
         obj.content_type = Some("application/xml".to_string());
-        obj.update().await?;
+        obj.update(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        Object::create(&bucket.name, vec![0, 1], "test-delete", "text/plain").await?;
+        Object::create(
+            &client,
+            &bucket.name,
+            vec![0, 1],
+            "test-delete",
+            "text/plain",
+        )
+        .await?;
 
-        Object::delete(&bucket.name, "test-delete").await?;
+        Object::delete(&client, &bucket.name, "test-delete").await?;
 
-        let list: Vec<_> = flattened_list_prefix_stream(&bucket.name, "test-delete").await?;
+        let list: Vec<_> =
+            flattened_list_prefix_stream(&client, &bucket.name, "test-delete").await?;
         assert!(list.is_empty());
 
         Ok(())
@@ -1058,11 +1118,12 @@ mod tests {
 
     #[tokio::test]
     async fn delete_nonexistent() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
 
         let nonexistent_object = "test-delete-nonexistent";
 
-        let delete_result = Object::delete(&bucket.name, nonexistent_object).await;
+        let delete_result = Object::delete(&client, &bucket.name, nonexistent_object).await;
 
         if let Err(Error::Google(google_error_response)) = delete_result {
             assert!(google_error_response.to_string().contains(&format!(
@@ -1078,9 +1139,24 @@ mod tests {
 
     #[tokio::test]
     async fn compose() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        let obj1 = Object::create(&bucket.name, vec![0, 1], "test-compose-1", "text/plain").await?;
-        let obj2 = Object::create(&bucket.name, vec![2, 3], "test-compose-2", "text/plain").await?;
+        let obj1 = Object::create(
+            &client,
+            &bucket.name,
+            vec![0, 1],
+            "test-compose-1",
+            "text/plain",
+        )
+        .await?;
+        let obj2 = Object::create(
+            &client,
+            &bucket.name,
+            vec![2, 3],
+            "test-compose-2",
+            "text/plain",
+        )
+        .await?;
         let compose_request = ComposeRequest {
             kind: "storage#composeRequest".to_string(),
             source_objects: vec![
@@ -1097,8 +1173,14 @@ mod tests {
             ],
             destination: None,
         };
-        let obj3 = Object::compose(&bucket.name, &compose_request, "test-concatted-file").await?;
-        let url = obj3.download_url(100)?;
+        let obj3 = Object::compose(
+            &client,
+            &bucket.name,
+            &compose_request,
+            "test-concatted-file",
+        )
+        .await?;
+        let url = obj3.download_url(&client, Duration::seconds(100))?;
         let content = reqwest::get(&url).await?.text().await?;
         assert_eq!(content.as_bytes(), &[0, 1, 2, 3]);
         Ok(())
@@ -1106,25 +1188,40 @@ mod tests {
 
     #[tokio::test]
     async fn copy() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        let original = Object::create(&bucket.name, vec![2, 3], "test-copy", "text/plain").await?;
-        original.copy(&bucket.name, "test-copy - copy").await?;
+        let original =
+            Object::create(&client, &bucket.name, vec![2, 3], "test-copy", "text/plain").await?;
+        original
+            .copy(&client, &bucket.name, "test-copy - copy")
+            .await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn rewrite() -> Result<(), Box<dyn std::error::Error>> {
+        let cloud_storage = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        let obj = Object::create(&bucket.name, vec![0, 1], "test-rewrite", "text/plain").await?;
-        let obj = obj.rewrite(&bucket.name, "test-rewritten").await?;
-        let url = obj.download_url(100)?;
-        let download = crate::CLIENT.head(&url).send().await?;
+        let obj = Object::create(
+            &cloud_storage,
+            &bucket.name,
+            vec![0, 1],
+            "test-rewrite",
+            "text/plain",
+        )
+        .await?;
+        let obj = obj
+            .rewrite(&cloud_storage, &bucket.name, "test-rewritten")
+            .await?;
+        let url = obj.download_url(&cloud_storage, Duration::seconds(100))?;
+        let download = cloud_storage.client.head(&url).send().await?;
         assert_eq!(download.status().as_u16(), 200);
         Ok(())
     }
 
     #[tokio::test]
     async fn test_url_encoding() -> Result<(), Box<dyn std::error::Error>> {
+        let cloud_storage = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let complicated_names = [
             "asdf",
@@ -1135,10 +1232,13 @@ mod tests {
             "测试很重要",
         ];
         for name in &complicated_names {
-            let _obj = Object::create(&bucket.name, vec![0, 1], name, "text/plain").await?;
-            let obj = Object::read(&bucket.name, &name).await.unwrap();
-            let url = obj.download_url(100)?;
-            let download = crate::CLIENT.head(&url).send().await?;
+            let _obj = Object::create(&cloud_storage, &bucket.name, vec![0, 1], name, "text/plain")
+                .await?;
+            let obj = Object::read(&cloud_storage, &bucket.name, &name)
+                .await
+                .unwrap();
+            let url = obj.download_url(&cloud_storage, Duration::seconds(100))?;
+            let download = reqwest::Client::new().head(&url).send().await?;
             assert_eq!(download.status().as_u16(), 200);
         }
         Ok(())
@@ -1146,12 +1246,20 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_url_with() -> Result<(), Box<dyn std::error::Error>> {
+        let cloud_storage = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        let client = reqwest::Client::new();
-        let obj = Object::create(&bucket.name, vec![0, 1], "test-rewrite", "text/plain").await?;
+        let obj = Object::create(
+            &cloud_storage,
+            &bucket.name,
+            vec![0, 1],
+            "test-rewrite",
+            "text/plain",
+        )
+        .await?;
 
         let opts1 = crate::DownloadOptions::new().content_disposition("attachment");
-        let download_url1 = obj.download_url_with(100, opts1)?;
+        let download_url1 = obj.download_url_with(&cloud_storage, Duration::seconds(100), opts1)?;
+        let client = reqwest::Client::new();
         let download1 = client.head(&download_url1).send().await?;
         assert_eq!(download1.headers()["content-disposition"], "attachment");
         Ok(())

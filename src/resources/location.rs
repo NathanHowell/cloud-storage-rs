@@ -1,5 +1,5 @@
 /// Deeply nested enum that represents a location where a bucket might store its files.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum Location {
     /// Objects are stored in a single location.
@@ -17,7 +17,7 @@ impl Default for Location {
 }
 
 /// The possible options for single regions.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(untagged)]
 pub enum SingleRegion {
     /// All options in North America.
@@ -33,7 +33,7 @@ pub enum SingleRegion {
 }
 
 /// All options in North America.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum NALocation {
     /// Store the files in Montréal.
     #[serde(rename = "NORTHAMERICA-NORTHEAST1")]
@@ -56,7 +56,7 @@ pub enum NALocation {
 }
 
 /// All options in South America.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum SALocation {
     /// Store the files in Soa Paulo.
     #[serde(rename = "SOUTHAMERICA-EAST1")]
@@ -64,7 +64,7 @@ pub enum SALocation {
 }
 
 /// All options in Europe.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EuropeLocation {
     /// Store the files in Finland.
     #[serde(rename = "EUROPE-NORTH1")]
@@ -87,7 +87,7 @@ pub enum EuropeLocation {
 }
 
 /// ALl options in Asia.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum AsiaLocation {
     /// Store the files in Taiwan.
     #[serde(rename = "ASIA-EAST1")]
@@ -110,7 +110,7 @@ pub enum AsiaLocation {
 }
 
 /// All options in Australia.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum AusLocation {
     /// Store the files in Sydney.
     #[serde(rename = "AUSTRALIA-SOUTHEAST1")]
@@ -118,7 +118,7 @@ pub enum AusLocation {
 }
 
 /// The possible options for multi-region storage.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum MultiRegion {
     /// Data centers in Asia
@@ -133,7 +133,7 @@ pub enum MultiRegion {
 }
 
 /// The possible options for dual-region storage
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum DualRegion {
     /// EUROPE-NORTH1 and EUROPE-WEST4. Additionally, object metadata may be stored in EUROPE-WEST1.

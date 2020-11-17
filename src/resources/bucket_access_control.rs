@@ -19,7 +19,7 @@ pub use crate::resources::common::{Entity, ProjectTeam, Role};
 /// objects.
 /// * OWNERs are WRITERs, and they can get the acl property of a bucket, update a bucket, and call
 /// all BucketAccessControl methods on the bucket.
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BucketAccessControl {
     /// The kind of item this is. For bucket access control entries, this is always
@@ -64,7 +64,7 @@ pub struct BucketAccessControl {
 }
 
 /// Model that can be used to create a new BucketAccessControl object.
-#[derive(Debug, PartialEq, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewBucketAccessControl {
     /// The entity holding the permission, in one of the following forms:
@@ -108,27 +108,25 @@ impl BucketAccessControl {
     ///     entity: Entity::AllUsers,
     ///     role: Role::Reader,
     /// };
-    /// BucketAccessControl::create("mybucket", &new_bucket_access_control).await?;
+    /// BucketAccessControl::create("mybucket", new_bucket_access_control).await?;
     /// # Ok(())
     /// # }
     /// ```
     pub async fn create(
+        cloud_storage: &crate::Client,
         bucket: &str,
-        new_bucket_access_control: &NewBucketAccessControl,
+        new_bucket_access_control: NewBucketAccessControl,
     ) -> crate::Result<Self> {
         let url = format!("{}/b/{}/acl", crate::BASE_URL, bucket);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .post(&url)
-            .headers(crate::get_headers().await?)
-            .json(new_bucket_access_control)
+            .await?
+            .json(&new_bucket_access_control)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Returns all `BucketAccessControl`s related to this bucket.
@@ -147,19 +145,17 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn list(bucket: &str) -> crate::Result<Vec<Self>> {
+    pub async fn list(cloud_storage: &crate::Client, bucket: &str) -> crate::Result<Vec<Self>> {
         let url = format!("{}/b/{}/acl", crate::BASE_URL, bucket);
-        let result: GoogleResponse<ListResponse<Self>> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s.items),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<ListResponse<Self>>>()
+            .await?
+            .into_result()
+            .map(|response| response.items)
     }
 
     /// Returns the ACL entry for the specified entity on the specified bucket.
@@ -178,19 +174,20 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn read(bucket: &str, entity: &Entity) -> crate::Result<Self> {
+    pub async fn read(
+        cloud_storage: &crate::Client,
+        bucket: &str,
+        entity: &Entity,
+    ) -> crate::Result<Self> {
         let url = format!("{}/b/{}/acl/{}", crate::BASE_URL, bucket, entity);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .get(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Update this `BucketAccessControl`.
@@ -211,20 +208,17 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn update(&self) -> crate::Result<Self> {
+    pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!("{}/b/{}/acl/{}", crate::BASE_URL, self.bucket, self.entity);
-        let result: GoogleResponse<Self> = crate::CLIENT
+        cloud_storage
             .put(&url)
-            .headers(crate::get_headers().await?)
-            .json(self)
+            .await?
+            .json(&self)
             .send()
             .await?
-            .json()
-            .await?;
-        match result {
-            GoogleResponse::Success(s) => Ok(s),
-            GoogleResponse::Error(e) => Err(e.into()),
-        }
+            .json::<GoogleResponse<Self>>()
+            .await?
+            .into_result()
     }
 
     /// Permanently deletes the ACL entry for the specified entity on the specified bucket.
@@ -244,18 +238,16 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn delete(self) -> crate::Result<()> {
+    pub async fn delete(self, cloud_storage: &crate::Client) -> crate::Result<()> {
         let url = format!("{}/b/{}/acl/{}", crate::BASE_URL, self.bucket, self.entity);
-        let response = crate::CLIENT
+        cloud_storage
             .delete(&url)
-            .headers(crate::get_headers().await?)
+            .await?
             .send()
-            .await?;
-        if response.status().is_success() {
-            Ok(())
-        } else {
-            Err(crate::Error::Google(response.json().await?))
-        }
+            .await?
+            .json::<GoogleResponse<()>>()
+            .await?
+            .into_result()
     }
 }
 
@@ -265,57 +257,62 @@ mod tests {
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
         let new_bucket_access_control = NewBucketAccessControl {
             entity: Entity::AllUsers,
             role: Role::Reader,
         };
-        BucketAccessControl::create(&bucket.name, &new_bucket_access_control).await?;
+        BucketAccessControl::create(&client, &bucket.name, new_bucket_access_control).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        BucketAccessControl::list(&bucket.name).await?;
+        BucketAccessControl::list(&client, &bucket.name).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
+        let client = crate::Client::new();
         let bucket = crate::read_test_bucket().await;
-        BucketAccessControl::read(&bucket.name, &Entity::AllUsers).await?;
+        BucketAccessControl::read(&client, &bucket.name, &Entity::AllUsers).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        // use a seperate bucket to prevent synchronization issues
-        let bucket = crate::create_test_bucket("test-update-bucket-access-controls").await;
+        let client = crate::Client::new();
+        // use a separate bucket to prevent synchronization issues
+        let bucket = crate::create_test_bucket(&client, "test-update-bucket-access-controls").await;
         let new_bucket_access_control = NewBucketAccessControl {
             entity: Entity::AllUsers,
             role: Role::Reader,
         };
-        BucketAccessControl::create(&bucket.name, &new_bucket_access_control).await?;
-        let mut acl = BucketAccessControl::read(&bucket.name, &Entity::AllUsers).await?;
+        BucketAccessControl::create(&client, &bucket.name, new_bucket_access_control).await?;
+        let mut acl = BucketAccessControl::read(&client, &bucket.name, &Entity::AllUsers).await?;
         acl.entity = Entity::AllAuthenticatedUsers;
-        acl.update().await?;
-        bucket.delete().await?;
+        acl.update(&client).await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        // use a seperate bucket to prevent synchronization issues
-        let bucket = crate::create_test_bucket("test-delete-bucket-access-controls").await;
+        let client = crate::Client::new();
+        // use a separate bucket to prevent synchronization issues
+        let bucket = crate::create_test_bucket(&client, "test-delete-bucket-access-controls").await;
         let new_bucket_access_control = NewBucketAccessControl {
             entity: Entity::AllUsers,
             role: Role::Reader,
         };
-        BucketAccessControl::create(&bucket.name, &new_bucket_access_control).await?;
-        let acl = BucketAccessControl::read(&bucket.name, &Entity::AllUsers).await?;
-        acl.delete().await?;
-        bucket.delete().await?;
+        BucketAccessControl::create(&client, &bucket.name, new_bucket_access_control).await?;
+        let acl = BucketAccessControl::read(&client, &bucket.name, &Entity::AllUsers).await?;
+        acl.delete(&client).await?;
+        bucket.delete(&client).await?;
         Ok(())
     }
 }

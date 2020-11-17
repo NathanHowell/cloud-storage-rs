@@ -78,6 +78,21 @@ pub(crate) enum GoogleResponse<T> {
     Error(GoogleErrorResponse),
 }
 
+impl<T> From<GoogleResponse<T>> for Result<T, crate::Error> {
+    fn from(value: GoogleResponse<T>) -> Self {
+        match value {
+            GoogleResponse::Success(success) => Ok(success),
+            GoogleResponse::Error(err) => Err(err.into()),
+        }
+    }
+}
+
+impl<T> GoogleResponse<T> {
+    pub fn into_result(self) -> Result<T, crate::Error> {
+        self.into()
+    }
+}
+
 // TODO comment this in when try_trait (#42327) get stabilized and enjoy the nicer handling of
 // errors
 //

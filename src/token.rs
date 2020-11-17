@@ -34,27 +34,27 @@ impl Token {
         }
     }
 
-    pub async fn get(&mut self) -> crate::Result<String> {
+    pub async fn get(&mut self, cloud_storage: &crate::Client) -> crate::Result<String> {
         match self.token {
             Some((ref token, exp)) if exp > now() => Ok(token.clone()),
-            _ => self.retrieve().await,
+            _ => self.retrieve(cloud_storage).await,
         }
     }
 
-    async fn retrieve(&mut self) -> crate::Result<String> {
-        self.token = Some(Self::get_token(&self.access_scope).await?);
+    async fn retrieve(&mut self, cloud_storage: &crate::Client) -> crate::Result<String> {
+        self.token = Some(Self::get_token(cloud_storage, &self.access_scope).await?);
         match self.token {
             Some(ref token) => Ok(token.0.clone()),
             None => unreachable!(),
         }
     }
 
-    async fn get_token(scope: &str) -> Result<(String, u64), Error> {
+    async fn get_token(cloud_storage: &crate::Client, scope: &str) -> Result<(String, u64), Error> {
         let now = now();
         let exp = now + 3600;
 
         let claims = Claims {
-            iss: crate::SERVICE_ACCOUNT.client_email.clone(),
+            iss: cloud_storage.service_account.client_email.clone(),
             scope: scope.into(),
             aud: "https://www.googleapis.com/oauth2/v4/token".to_string(),
             exp,
@@ -62,14 +62,15 @@ impl Token {
         };
         let mut header = jsonwebtoken::Header::default();
         header.alg = jsonwebtoken::Algorithm::RS256;
-        let private_key_bytes = crate::SERVICE_ACCOUNT.private_key.as_bytes();
+        let private_key_bytes = cloud_storage.service_account.private_key.as_bytes();
         let private_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key_bytes)?;
         let jwt = jsonwebtoken::encode(&header, &claims, &private_key)?;
         let body = [
             ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
             ("assertion", &jwt),
         ];
-        let response: TokenResponse = super::CLIENT
+        let response: TokenResponse = cloud_storage
+            .client
             .post("https://www.googleapis.com/oauth2/v4/token")
             .form(&body)
             .send()
