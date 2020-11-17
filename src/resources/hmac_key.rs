@@ -98,15 +98,17 @@ impl HmacKey {
     pub async fn create(cloud_storage: &crate::Client) -> crate::Result<Self> {
         use reqwest::header::CONTENT_LENGTH;
 
+        let service_account = cloud_storage
+            .service_account
+            .as_ref()
+            .ok_or(crate::Error::MissingServiceAccount)?;
+
         let url = format!(
             "{}/projects/{}/hmacKeys",
             crate::BASE_URL,
-            cloud_storage.service_account.project_id
+            cloud_storage.project_id
         );
-        let query = [(
-            "serviceAccountEmail",
-            &cloud_storage.service_account.client_email,
-        )];
+        let query = [("serviceAccountEmail", &service_account.client_email)];
         cloud_storage
             .post(&url)
             .await?
@@ -142,7 +144,7 @@ impl HmacKey {
         let url = format!(
             "{}/projects/{}/hmacKeys",
             crate::BASE_URL,
-            cloud_storage.service_account.project_id
+            cloud_storage.project_id
         );
 
         // This function requires more complicated error handling because when there is only one
@@ -183,7 +185,7 @@ impl HmacKey {
         let url = format!(
             "{}/projects/{}/hmacKeys/{}",
             crate::BASE_URL,
-            cloud_storage.service_account.project_id,
+            cloud_storage.project_id,
             access_id
         );
         cloud_storage
@@ -222,7 +224,7 @@ impl HmacKey {
         let url = format!(
             "{}/projects/{}/hmacKeys/{}",
             crate::BASE_URL,
-            cloud_storage.service_account.project_id,
+            cloud_storage.project_id,
             access_id
         );
         cloud_storage
@@ -257,7 +259,7 @@ impl HmacKey {
         let url = format!(
             "{}/projects/{}/hmacKeys/{}",
             crate::BASE_URL,
-            cloud_storage.service_account.project_id,
+            cloud_storage.project_id,
             access_id
         );
         cloud_storage
@@ -276,7 +278,7 @@ mod tests {
     use super::*;
 
     async fn get_test_hmac() -> HmacMeta {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         match HmacKey::create(&client).await {
             Ok(key) => key.metadata,
             Err(_) => HmacKey::list(&client).await.unwrap().pop().unwrap(),
@@ -284,7 +286,7 @@ mod tests {
     }
 
     async fn remove_test_hmac(access_id: &str) {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         HmacKey::update(&client, access_id, HmacState::Inactive)
             .await
             .unwrap();
@@ -293,7 +295,7 @@ mod tests {
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let key = HmacKey::create(&client).await?;
         remove_test_hmac(&key.metadata.access_id).await;
         Ok(())
@@ -301,14 +303,14 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         HmacKey::list(&client).await?;
         Ok(())
     }
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let key = get_test_hmac().await;
         HmacKey::read(&client, &key.access_id).await?;
         remove_test_hmac(&key.access_id).await;
@@ -317,7 +319,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let key = get_test_hmac().await;
         HmacKey::update(&client, &key.access_id, HmacState::Inactive).await?;
         HmacKey::delete(&client, &key.access_id).await?;
@@ -326,7 +328,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let key = get_test_hmac().await;
         HmacKey::update(&client, &key.access_id, HmacState::Inactive).await?;
         HmacKey::delete(&client, &key.access_id).await?;
@@ -335,7 +337,7 @@ mod tests {
 
     #[tokio::test]
     async fn clear_keys() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let keys = HmacKey::list(&client).await?;
         for key in &keys {
             if key.state != HmacState::Inactive {

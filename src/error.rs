@@ -5,12 +5,18 @@ pub enum Error {
     Google(GoogleErrorResponse),
     /// If another network error causes something to fail, this variant is used.
     Reqwest(reqwest::Error),
-    /// If we encouter a SSL error, for example an invalid certificate, this variant is used.
+    /// If we encounter an IO error, this variant is used.
+    IOError(std::io::Error),
+    /// If we encounter a SSL error, for example an invalid certificate, this variant is used.
     Ssl(openssl::error::ErrorStack),
-    /// If we have problems creating or parsing a json web token, this variant is used.
-    Jwt(jsonwebtoken::errors::Error),
-    /// If we cannot deserialize one of the repsonses sent by Google, this variant is used.
+    /// If we have problems creating or parsing a bearer token, this variant is used.
+    Gouth(gouth::Error),
+    /// If we have problems creating or parsing a bearer token, this variant is used.
+    GCEMeta(gcemeta::Error),
+    /// If we cannot deserialize one of the responses sent by Google, this variant is used.
     Serialization(serde_json::error::Error),
+    /// If a function expected a service account but none was found, this variant is used.
+    MissingServiceAccount,
     /// If another failure causes the error, this variant is populated.
     Other(String),
 }
@@ -33,7 +39,10 @@ impl std::error::Error for Error {
             Self::Google(e) => Some(e),
             Self::Reqwest(e) => Some(e),
             Self::Ssl(e) => Some(e),
-            Self::Jwt(e) => Some(e),
+            Self::Gouth(e) => Some(e),
+            Self::GCEMeta(e) => Some(e),
+            Self::IOError(e) => Some(e),
+            Self::MissingServiceAccount => None,
             Self::Serialization(e) => Some(e),
             Self::Other(_) => None,
         }
@@ -52,9 +61,21 @@ impl From<openssl::error::ErrorStack> for Error {
     }
 }
 
-impl From<jsonwebtoken::errors::Error> for Error {
-    fn from(err: jsonwebtoken::errors::Error) -> Self {
-        Self::Jwt(err)
+impl From<gouth::Error> for Error {
+    fn from(err: gouth::Error) -> Self {
+        Self::Gouth(err)
+    }
+}
+
+impl From<gcemeta::Error> for Error {
+    fn from(err: gcemeta::Error) -> Self {
+        Self::GCEMeta(err)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Self::IOError(err)
     }
 }
 

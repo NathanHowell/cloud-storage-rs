@@ -2,6 +2,7 @@ use crate::error::{Error, GoogleResponse};
 pub use crate::resources::bucket::Owner;
 use crate::resources::common::ListResponse;
 use crate::resources::object_access_control::ObjectAccessControl;
+use crate::resources::service_account::ServiceAccount;
 use futures::{stream, Stream, TryStream};
 use percent_encoding::{utf8_percent_encode, AsciiSet, NON_ALPHANUMERIC};
 use reqwest::header::HeaderMap;
@@ -770,7 +771,10 @@ impl Object {
         let issue_date = chrono::Utc::now();
         let file_path = self.path_to_resource(file_path);
         let query_string = Self::get_canonical_query_string(
-            cloud_storage,
+            cloud_storage
+                .service_account
+                .as_ref()
+                .ok_or(Error::MissingServiceAccount)?,
             &issue_date,
             duration,
             &signed_headers,
@@ -838,7 +842,7 @@ impl Object {
 
     #[inline(always)]
     fn get_canonical_query_string(
-        cloud_storage: &crate::Client,
+        service_account: &ServiceAccount,
         date: &chrono::DateTime<chrono::Utc>,
         exp: chrono::Duration,
         headers: &str,
@@ -846,7 +850,7 @@ impl Object {
     ) -> String {
         let credential = format!(
             "{authorizer}/{scope}",
-            authorizer = cloud_storage.service_account.client_email,
+            authorizer = service_account.client_email,
             scope = Self::get_credential_scope(date),
         );
         let mut s = format!(
@@ -886,7 +890,14 @@ impl Object {
     fn sign_str(cloud_storage: &crate::Client, message: &str) -> Result<Vec<u8>, Error> {
         use openssl::{hash::MessageDigest, pkey::PKey, sign::Signer};
 
-        let key = PKey::private_key_from_pem(cloud_storage.service_account.private_key.as_bytes())?;
+        let key = PKey::private_key_from_pem(
+            cloud_storage
+                .service_account
+                .as_ref()
+                .ok_or(Error::MissingServiceAccount)?
+                .private_key
+                .as_bytes(),
+        )?;
         let mut signer = Signer::new(MessageDigest::sha256(), &key)?;
         signer.update(message.as_bytes())?;
         Ok(signer.sign_to_vec()?)
@@ -919,7 +930,7 @@ mod tests {
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         Object::create(
             &client,
@@ -934,7 +945,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_streamed() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let stream = stream::iter([0u8, 1].iter())
             .map(Ok::<_, Box<dyn std::error::Error + Send + Sync>>)
@@ -953,7 +964,7 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let test_bucket = crate::read_test_bucket().await;
         let _v: Vec<Object> = Object::list(&client, &test_bucket.name)
             .await?
@@ -975,7 +986,7 @@ mod tests {
 
     #[tokio::test]
     async fn list_prefix() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let test_bucket = crate::read_test_bucket().await;
 
         let prefix_names = [
@@ -1000,7 +1011,7 @@ mod tests {
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         Object::create(&client, &bucket.name, vec![0, 1], "test-read", "text/plain").await?;
         Object::read(&client, &bucket.name, "test-read").await?;
@@ -1009,7 +1020,7 @@ mod tests {
 
     #[tokio::test]
     async fn download() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let content = b"hello world";
         Object::create(
@@ -1029,7 +1040,7 @@ mod tests {
 
     #[tokio::test]
     async fn download_streamed() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let content = b"hello world";
         Object::create(
@@ -1054,7 +1065,7 @@ mod tests {
 
     #[tokio::test]
     async fn download_streamed_large() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let content = vec![5u8; 1_000_000];
         Object::create(
@@ -1079,7 +1090,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let mut obj = Object::create(
             &client,
@@ -1096,7 +1107,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         Object::create(
             &client,
@@ -1118,7 +1129,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete_nonexistent() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
 
         let nonexistent_object = "test-delete-nonexistent";
@@ -1139,7 +1150,7 @@ mod tests {
 
     #[tokio::test]
     async fn compose() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let obj1 = Object::create(
             &client,
@@ -1188,7 +1199,7 @@ mod tests {
 
     #[tokio::test]
     async fn copy() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let original =
             Object::create(&client, &bucket.name, vec![2, 3], "test-copy", "text/plain").await?;
@@ -1200,7 +1211,7 @@ mod tests {
 
     #[tokio::test]
     async fn rewrite() -> Result<(), Box<dyn std::error::Error>> {
-        let cloud_storage = crate::Client::new();
+        let cloud_storage = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let obj = Object::create(
             &cloud_storage,
@@ -1221,7 +1232,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_url_encoding() -> Result<(), Box<dyn std::error::Error>> {
-        let cloud_storage = crate::Client::new();
+        let cloud_storage = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let complicated_names = [
             "asdf",
@@ -1246,7 +1257,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_download_url_with() -> Result<(), Box<dyn std::error::Error>> {
-        let cloud_storage = crate::Client::new();
+        let cloud_storage = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let obj = Object::create(
             &cloud_storage,

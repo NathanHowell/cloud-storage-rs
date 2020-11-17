@@ -87,7 +87,6 @@ mod download_options;
 mod error;
 /// Contains objects as represented by Google, to be used for serialization and deserialization.
 mod resources;
-mod token;
 
 pub use crate::error::*;
 use crate::resources::service_account::ServiceAccount;
@@ -96,35 +95,52 @@ pub use crate::resources::{
     object::Object,
     *,
 };
-use crate::token::Token;
 pub use download_options::DownloadOptions;
+use gouth::Token;
 use reqwest::{IntoUrl, RequestBuilder};
-use tokio::sync::Mutex;
 
 ///
 ///
 pub struct Client {
     /// Static `Token` struct that caches
-    token_cache: Mutex<Token>,
+    token: Token,
+
+    /// Project ID
+    project_id: String,
 
     /// The struct is the parsed service account json file. It is publicly exported to enable easier
     /// debugging of which service account is currently used. It is of the type
     /// [ServiceAccount](service_account/struct.ServiceAccount.html).
-    pub service_account: ServiceAccount,
+    pub service_account: Option<ServiceAccount>,
 
     client: reqwest::Client,
 }
 
+fn gcloud_project() -> Result<String> {
+    let output = std::process::Command::new("gcloud")
+        .args(&["config", "get-value", "project", "--format=json"])
+        .envs(std::env::vars())
+        .output()?;
+    Ok(serde_json::from_slice(output.stdout.as_slice())?)
+}
+
+fn project_id() -> Result<String> {
+    std::env::var("GOOGLE_CLOUD_PROJECT")
+        .or_else(|_| gcloud_project())
+        .or_else(|_| Ok(gcemeta::project_id()?))
+}
+
 impl Client {
     ///
-    pub fn new() -> Self {
-        Client {
-            token_cache: Mutex::new(Token::new(
-                "https://www.googleapis.com/auth/devstorage.full_control",
-            )),
-            service_account: ServiceAccount::get(),
+    pub fn new() -> Result<Self> {
+        Ok(Client {
+            token: gouth::Builder::new()
+                .scopes(&["https://www.googleapis.com/auth/devstorage.full_control"])
+                .build()?,
+            project_id: project_id()?,
+            service_account: ServiceAccount::from_env().ok(),
             client: reqwest::Client::new(),
-        }
+        })
     }
 }
 
@@ -134,31 +150,27 @@ pub type Result<T> = std::result::Result<T, crate::Error>;
 const BASE_URL: &str = "https://www.googleapis.com/storage/v1";
 
 impl Client {
-    async fn get_headers1(&self) -> Result<reqwest::header::HeaderMap> {
+    async fn get_headers(&self) -> Result<reqwest::header::HeaderMap> {
         let mut result = reqwest::header::HeaderMap::new();
-        let mut guard = self.token_cache.lock().await;
-        let token = guard.get(self).await?;
-        result.insert(
-            reqwest::header::AUTHORIZATION,
-            format!("Bearer {}", token).parse().unwrap(),
-        );
+        let token = self.token.header_value()?;
+        result.insert(reqwest::header::AUTHORIZATION, token.parse()?);
         Ok(result)
     }
 
     async fn delete<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
-        Ok(self.client.delete(url).headers(self.get_headers1().await?))
+        Ok(self.client.delete(url).headers(self.get_headers().await?))
     }
 
     async fn get<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
-        Ok(self.client.get(url).headers(self.get_headers1().await?))
+        Ok(self.client.get(url).headers(self.get_headers().await?))
     }
 
     async fn post<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
-        Ok(self.client.post(url).headers(self.get_headers1().await?))
+        Ok(self.client.post(url).headers(self.get_headers().await?))
     }
 
     async fn put<U: IntoUrl>(&self, url: U) -> Result<RequestBuilder> {
-        Ok(self.client.put(url).headers(self.get_headers1().await?))
+        Ok(self.client.put(url).headers(self.get_headers().await?))
     }
 }
 
@@ -197,7 +209,7 @@ where
 async fn read_test_bucket() -> Bucket {
     dotenv::dotenv().ok();
     let name = std::env::var("TEST_BUCKET").unwrap();
-    let client = crate::Client::new();
+    let client = crate::Client::new().unwrap();
     match Bucket::read(&client, &name).await {
         Ok(bucket) => bucket,
         Err(_not_found) => Bucket::create(

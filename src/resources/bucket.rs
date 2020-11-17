@@ -568,7 +568,7 @@ impl Bucket {
         new_bucket: &NewBucket,
     ) -> crate::Result<Self> {
         let url = format!("{}/b/", crate::BASE_URL);
-        let project = &cloud_storage.service_account.project_id;
+        let project = &cloud_storage.project_id;
         let query = [("project", project)];
         let result: GoogleResponse<Self> = cloud_storage
             .post(&url)
@@ -603,7 +603,7 @@ impl Bucket {
     /// ```
     pub async fn list(cloud_storage: &crate::Client) -> Result<Vec<Self>, Error> {
         let url = format!("{}/b/", crate::BASE_URL);
-        let project = &cloud_storage.service_account.project_id;
+        let project = &cloud_storage.project_id;
         let query = [("project", project)];
         cloud_storage
             .get(&url)
@@ -862,7 +862,7 @@ mod tests {
             }),
             ..Default::default()
         };
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = Bucket::create(&client, &new_bucket).await?;
         bucket.delete(&client).await?;
         Ok(())
@@ -870,14 +870,15 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
-        Bucket::list(&client).await?;
+        let client = crate::Client::new()?;
+        let res = Bucket::list(&client).await?;
+        println!("{:?}", res);
         Ok(())
     }
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::create_test_bucket(&client, "test-read").await;
         let also_bucket = Bucket::read(&client, &bucket.name).await?;
         assert_eq!(bucket, also_bucket);
@@ -888,7 +889,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let mut bucket = crate::create_test_bucket(&client, "test-update").await;
         bucket.retention_policy = Some(RetentionPolicy {
             retention_period: 50,
@@ -906,7 +907,7 @@ mod tests {
     // used a lot throughout the other tests, but included for completeness
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::create_test_bucket(&client, "test-delete").await;
         bucket.delete(&client).await?;
         Ok(())
@@ -914,7 +915,7 @@ mod tests {
 
     #[tokio::test]
     async fn get_iam_policy() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::create_test_bucket(&client, "test-get-iam-policy").await;
         bucket.get_iam_policy(&client).await?;
         bucket.delete(&client).await?;
@@ -923,7 +924,7 @@ mod tests {
 
     #[tokio::test]
     async fn set_iam_policy() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::create_test_bucket(&client, "test-set-iam-policy").await;
         let iam_policy = IamPolicy {
             bindings: vec![Binding {
@@ -944,7 +945,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_iam_permission() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::create_test_bucket(&client, "test-test-ia-permission").await;
         bucket
             .test_iam_permission(&client, "storage.buckets.get")

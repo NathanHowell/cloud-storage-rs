@@ -237,7 +237,7 @@ mod tests {
 
     #[tokio::test]
     async fn create() {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let bucket = crate::read_test_bucket().await;
         Object::create(
             &client,
@@ -264,7 +264,7 @@ mod tests {
 
     #[tokio::test]
     async fn list() {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let bucket = crate::read_test_bucket().await;
         Object::create(
             &client,
@@ -282,7 +282,7 @@ mod tests {
 
     #[tokio::test]
     async fn read() {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         let bucket = crate::read_test_bucket().await;
         Object::create(
             &client,
@@ -317,7 +317,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         // use a separate bucket to prevent synchronization issues
         let bucket = crate::create_test_bucket(&client, "test-object-access-controls-update").await;
         let new_bucket_access_control = NewObjectAccessControl {
@@ -355,7 +355,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete() {
-        let client = crate::Client::new();
+        let client = crate::Client::new().unwrap();
         // use a separate bucket to prevent synchronization issues
         let bucket = crate::create_test_bucket(&client, "test-object-access-controls-delete").await;
         let new_bucket_access_control = NewObjectAccessControl {

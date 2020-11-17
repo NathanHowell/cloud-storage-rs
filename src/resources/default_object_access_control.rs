@@ -278,7 +278,7 @@ mod tests {
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let new_acl = NewDefaultObjectAccessControl {
             entity: Entity::AllUsers,
@@ -290,7 +290,7 @@ mod tests {
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         DefaultObjectAccessControl::read(&client, &bucket.name, &Entity::AllUsers).await?;
         Ok(())
@@ -298,7 +298,7 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         DefaultObjectAccessControl::list(&client, &bucket.name).await?;
         Ok(())
@@ -306,7 +306,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let new_acl = NewDefaultObjectAccessControl {
             entity: Entity::AllUsers,
@@ -321,7 +321,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let default_acl =
             DefaultObjectAccessControl::read(&client, &bucket.name, &Entity::AllAuthenticatedUsers)

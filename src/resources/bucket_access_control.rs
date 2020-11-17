@@ -257,7 +257,7 @@ mod tests {
 
     #[tokio::test]
     async fn create() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         let new_bucket_access_control = NewBucketAccessControl {
             entity: Entity::AllUsers,
@@ -269,7 +269,7 @@ mod tests {
 
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         BucketAccessControl::list(&client, &bucket.name).await?;
         Ok(())
@@ -277,7 +277,7 @@ mod tests {
 
     #[tokio::test]
     async fn read() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         let bucket = crate::read_test_bucket().await;
         BucketAccessControl::read(&client, &bucket.name, &Entity::AllUsers).await?;
         Ok(())
@@ -285,7 +285,7 @@ mod tests {
 
     #[tokio::test]
     async fn update() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         // use a separate bucket to prevent synchronization issues
         let bucket = crate::create_test_bucket(&client, "test-update-bucket-access-controls").await;
         let new_bucket_access_control = NewBucketAccessControl {
@@ -302,7 +302,7 @@ mod tests {
 
     #[tokio::test]
     async fn delete() -> Result<(), Box<dyn std::error::Error>> {
-        let client = crate::Client::new();
+        let client = crate::Client::new()?;
         // use a separate bucket to prevent synchronization issues
         let bucket = crate::create_test_bucket(&client, "test-delete-bucket-access-controls").await;
         let new_bucket_access_control = NewBucketAccessControl {
