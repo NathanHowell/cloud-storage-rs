@@ -563,6 +563,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn create(
         cloud_storage: &crate::Client,
         new_bucket: &NewBucket,
@@ -601,6 +602,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list(cloud_storage: &crate::Client) -> Result<Vec<Self>, Error> {
         let url = format!("{}/b/", crate::BASE_URL);
         let project = &cloud_storage.project_id;
@@ -637,6 +639,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn read(cloud_storage: &crate::Client, name: &str) -> crate::Result<Self> {
         let url = format!("{}/b/{}", crate::BASE_URL, name);
         cloud_storage
@@ -674,6 +677,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!("{}/b/{}", crate::BASE_URL, self.name);
         cloud_storage
@@ -707,6 +711,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn delete(self, cloud_storage: &crate::Client) -> crate::Result<()> {
         let url = format!("{}/b/{}", crate::BASE_URL, self.name);
         cloud_storage
@@ -738,6 +743,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn get_iam_policy(&self, cloud_storage: &crate::Client) -> crate::Result<IamPolicy> {
         let url = format!("{}/b/{}/iam", crate::BASE_URL, self.name);
         cloud_storage
@@ -781,6 +787,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn set_iam_policy(
         &self,
         cloud_storage: &crate::Client,
@@ -810,6 +817,7 @@ impl Bucket {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn test_iam_permission(
         &self,
         cloud_storage: &crate::Client,

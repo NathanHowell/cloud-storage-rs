@@ -110,6 +110,7 @@ impl ObjectAccessControl {
     /// This method fails with a 400 Bad Request response for buckets with uniform
     /// bucket-level access enabled. Use `Bucket::get_iam_policy` and `Bucket::set_iam_policy` to
     /// control access instead.
+    #[tracing::instrument]
     pub async fn create(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -134,6 +135,7 @@ impl ObjectAccessControl {
     /// Important: This method fails with a 400 Bad Request response for buckets with uniform
     /// bucket-level access enabled. Use `Bucket::get_iam_policy` and `Bucket::set_iam_policy` to
     /// control access instead.
+    #[tracing::instrument]
     pub async fn list(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -157,6 +159,7 @@ impl ObjectAccessControl {
     /// Important: This method fails with a 400 Bad Request response for buckets with uniform
     /// bucket-level access enabled. Use `Bucket::get_iam_policy` and `Bucket::set_iam_policy` to
     /// control access instead.
+    #[tracing::instrument]
     pub async fn read(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -186,6 +189,7 @@ impl ObjectAccessControl {
     /// Important: This method fails with a 400 Bad Request response for buckets with uniform
     /// bucket-level access enabled. Use `Bucket::get_iam_policy` and `Bucket::set_iam_policy` to
     /// control access instead.
+    #[tracing::instrument]
     pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!(
             "{}/b/{}/o/{}/acl/{}",
@@ -211,6 +215,7 @@ impl ObjectAccessControl {
     /// Important: This method fails with a 400 Bad Request response for buckets with uniform
     /// bucket-level access enabled. Use `Bucket::get_iam_policy` and `Bucket::set_iam_policy` to
     /// control access instead.
+    #[tracing::instrument]
     pub async fn delete(self, cloud_storage: &crate::Client) -> crate::Result<()> {
         let url = format!(
             "{}/b/{}/o/{}/acl/{}",

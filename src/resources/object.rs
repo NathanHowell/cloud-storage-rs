@@ -174,6 +174,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument(skip(file))]
     pub async fn create(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -221,11 +222,12 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument(skip(stream))]
     pub async fn create_streamed<S>(
         cloud_storage: &crate::Client,
         bucket: &str,
         stream: S,
-        length: impl Into<Option<u64>>,
+        length: impl Into<Option<u64>> + std::fmt::Debug,
         filename: &str,
         mime_type: &str,
     ) -> crate::Result<Self>
@@ -273,6 +275,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list<'a>(
         cloud_storage: &'a crate::Client,
         bucket: &'a str,
@@ -291,6 +294,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list_prefix<'a>(
         cloud_storage: &'a crate::Client,
         bucket: &'a str,
@@ -299,6 +303,7 @@ impl Object {
         Self::list_from(cloud_storage, bucket, Some(prefix)).await
     }
 
+    #[tracing::instrument]
     async fn list_from<'a>(
         cloud_storage: &'a crate::Client,
         bucket: &'a str,
@@ -374,6 +379,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn read(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -406,6 +412,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn download(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -446,6 +453,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn download_streamed(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -480,6 +488,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!(
             "{}/b/{}/o/{}",
@@ -509,6 +518,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn delete(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -560,6 +570,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn compose(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -596,6 +607,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn copy(
         &self,
         cloud_storage: &crate::Client,
@@ -643,6 +655,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn rewrite(
         &self,
         cloud_storage: &crate::Client,
@@ -687,6 +700,7 @@ impl Object {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub fn download_url(
         &self,
         cloud_storage: &crate::Client,

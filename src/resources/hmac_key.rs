@@ -95,6 +95,7 @@ impl HmacKey {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn create(cloud_storage: &crate::Client) -> crate::Result<Self> {
         use reqwest::header::CONTENT_LENGTH;
 
@@ -140,6 +141,7 @@ impl HmacKey {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list(cloud_storage: &crate::Client) -> crate::Result<Vec<HmacMeta>> {
         let url = format!(
             "{}/projects/{}/hmacKeys",
@@ -181,6 +183,7 @@ impl HmacKey {
     /// let key = HmacKey::read("some identifier").await?;
     /// # Ok(())
     /// # }
+    #[tracing::instrument]
     pub async fn read(cloud_storage: &crate::Client, access_id: &str) -> crate::Result<HmacMeta> {
         let url = format!(
             "{}/projects/{}/hmacKeys/{}",
@@ -216,6 +219,7 @@ impl HmacKey {
     /// let key = HmacKey::update("your key", HmacState::Active).await?;
     /// # Ok(())
     /// # }
+    #[tracing::instrument]
     pub async fn update(
         cloud_storage: &crate::Client,
         access_id: &str,
@@ -255,6 +259,7 @@ impl HmacKey {
     /// HmacKey::delete(&key.access_id).await?;
     /// # Ok(())
     /// # }
+    #[tracing::instrument]
     pub async fn delete(cloud_storage: &crate::Client, access_id: &str) -> crate::Result<()> {
         let url = format!(
             "{}/projects/{}/hmacKeys/{}",

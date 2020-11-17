@@ -98,6 +98,7 @@ pub use crate::resources::{
 pub use download_options::DownloadOptions;
 use gouth::Token;
 use reqwest::{IntoUrl, RequestBuilder};
+use std::fmt::{self, Debug, Formatter};
 
 ///
 ///
@@ -114,6 +115,17 @@ pub struct Client {
     pub service_account: Option<ServiceAccount>,
 
     client: reqwest::Client,
+}
+
+impl Debug for Client {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Client")
+            .field("token", &"...")
+            .field("project_id", &self.project_id)
+            .field("service_account", &self.service_account)
+            .field("client", &self.client)
+            .finish()
+    }
 }
 
 fn gcloud_project() -> Result<String> {

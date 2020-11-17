@@ -98,6 +98,7 @@ impl DefaultObjectAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn create(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -134,6 +135,7 @@ impl DefaultObjectAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list(cloud_storage: &crate::Client, bucket: &str) -> crate::Result<Vec<Self>> {
         let url = format!("{}/b/{}/defaultObjectAcl", crate::BASE_URL, bucket);
         cloud_storage
@@ -174,6 +176,7 @@ impl DefaultObjectAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn read(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -216,6 +219,7 @@ impl DefaultObjectAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!(
             "{}/b/{}/defaultObjectAcl/{}",
@@ -254,6 +258,7 @@ impl DefaultObjectAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn delete(self, cloud_storage: &crate::Client) -> Result<(), crate::Error> {
         let url = format!(
             "{}/b/{}/defaultObjectAcl/{}",

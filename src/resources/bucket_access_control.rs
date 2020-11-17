@@ -112,6 +112,7 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn create(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -145,6 +146,7 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn list(cloud_storage: &crate::Client, bucket: &str) -> crate::Result<Vec<Self>> {
         let url = format!("{}/b/{}/acl", crate::BASE_URL, bucket);
         cloud_storage
@@ -174,6 +176,7 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn read(
         cloud_storage: &crate::Client,
         bucket: &str,
@@ -208,6 +211,7 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn update(self, cloud_storage: &crate::Client) -> crate::Result<Self> {
         let url = format!("{}/b/{}/acl/{}", crate::BASE_URL, self.bucket, self.entity);
         cloud_storage
@@ -238,6 +242,7 @@ impl BucketAccessControl {
     /// # Ok(())
     /// # }
     /// ```
+    #[tracing::instrument]
     pub async fn delete(self, cloud_storage: &crate::Client) -> crate::Result<()> {
         let url = format!("{}/b/{}/acl/{}", crate::BASE_URL, self.bucket, self.entity);
         cloud_storage
