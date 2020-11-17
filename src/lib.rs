@@ -128,6 +128,7 @@ impl Debug for Client {
     }
 }
 
+#[tracing::instrument]
 fn gcloud_project() -> Result<String> {
     let output = std::process::Command::new("gcloud")
         .args(&["config", "get-value", "project", "--format=json"])
@@ -136,19 +137,25 @@ fn gcloud_project() -> Result<String> {
     Ok(serde_json::from_slice(output.stdout.as_slice())?)
 }
 
+#[tracing::instrument]
 fn project_id() -> Result<String> {
     std::env::var("GOOGLE_CLOUD_PROJECT")
         .or_else(|_| gcloud_project())
-        .or_else(|_| Ok(gcemeta::project_id()?))
+        .or_else(|_| tracing::debug_span!("gcemeta").in_scope(|| Ok(gcemeta::project_id()?)))
 }
 
 impl Client {
-    ///
+    /// Create a new storage client with the default authentication scope
+    #[tracing::instrument]
     pub fn new() -> Result<Self> {
+        Self::with_scopes(&["https://www.googleapis.com/auth/devstorage.full_control"])
+    }
+
+    /// Create a new storage client with a list of authentication scopes
+    #[tracing::instrument]
+    pub fn with_scopes<T: AsRef<str> + Debug>(scopes: &[T]) -> Result<Self> {
         Ok(Client {
-            token: gouth::Builder::new()
-                .scopes(&["https://www.googleapis.com/auth/devstorage.full_control"])
-                .build()?,
+            token: gouth::Builder::new().scopes(scopes).build()?,
             project_id: project_id()?,
             service_account: ServiceAccount::from_env().ok(),
             client: reqwest::Client::new(),
