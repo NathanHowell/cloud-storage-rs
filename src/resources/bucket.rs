@@ -54,7 +54,7 @@ pub struct Bucket {
     /// responses, and requests that specify this field fail.
     pub default_object_acl: Option<Vec<DefaultObjectAccessControl>>,
     /// The bucket's IAM configuration.
-    pub iam_configuration: IamConfiguration,
+    pub iam_configuration: Option<IamConfiguration>,
     /// Encryption configuration for a bucket.
     pub encryption: Option<Encryption>,
     /// The owner of the bucket. This is always the project team's owner group.
@@ -209,11 +209,11 @@ pub struct Website {
     /// If the requested object path is missing, the service will ensure the path has a trailing
     /// '/', append this suffix, and attempt to retrieve the resulting object. This allows the
     /// creation of index.html objects to represent directory pages.
-    pub main_page_suffix: String,
+    pub main_page_suffix: Option<String>,
     /// If the requested object path is missing, and any mainPageSuffix object is missing, if
     /// applicable, the service will return the named object from this bucket as the content for a
     /// 404 Not Found result.
-    pub not_found_page: String,
+    pub not_found_page: Option<String>,
 }
 
 /// Contains information of where and how access logs to this bucket are maintained.
@@ -876,11 +876,44 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn list_decode() {
+        let str = r#"{
+            "kind": "storage#buckets",
+            "items": [
+                {
+                    "kind": "storage#bucket",
+                    "selfLink": "https://www.googleapis.com/storage/v1/b/xxxx",
+                    "id": "xxxx",
+                    "name": "xxxx",
+                    "projectNumber": "125258737310",
+                    "metageneration": "4",
+                    "location": "US",
+                    "storageClass": "MULTI_REGIONAL",
+                    "etag": "CAQ=",
+                    "timeCreated": "2017-07-18T06:02:29.767Z",
+                    "updated": "2017-07-18T06:36:38.425Z",
+                    "website": {
+                        "mainPageSuffix": "index.html"
+                    },
+                    "locationType": "multi-region"
+                }
+            ]
+        }"#;
+
+        let res = serde_json::from_str::<GoogleResponse<ListResponse<Bucket>>>(&str)
+            .unwrap()
+            .into_result()
+            .unwrap();
+        assert_eq!(res.items.len(), 1);
+        let res = res.items.get(0).unwrap();
+        assert_eq!(res.name, "xxxx");
+    }
+
     #[tokio::test]
     async fn list() -> Result<(), Box<dyn std::error::Error>> {
         let client = crate::Client::new()?;
-        let res = Bucket::list(&client).await?;
-        println!("{:?}", res);
+        Bucket::list(&client).await?;
         Ok(())
     }
 
